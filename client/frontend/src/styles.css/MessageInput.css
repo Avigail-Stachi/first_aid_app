@@ -1,0 +1,28 @@
+.message-input-container {
+  margin-top: 1rem;
+  display: flex;
+  align-items: stretch;
+}
+
+.message-input-textarea {
+  flex-grow: 1;
+  padding: 0.5rem;
+  min-height: 40px;
+  resize: vertical;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.message-input-button {
+  padding: 0 1rem;
+  margin-left: 0.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  min-height: 40px;
+  align-self: stretch;
+}
+
+.message-input-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
