@@ -7,14 +7,17 @@ import "../styles.css/MessageInput.css";
 
 function MessageInput(props) {
   const { inputMsg, setInputMsg, onSend, disabled } = props;
-  //לנקות מתווים זדוניים ורווחים מיותרים
+  //לנקות מתווים זדוניים
   const sanitizeInput = (value) => {
-    const cleaned = value.replace(/[^\w\s.,!?'\n]/g, "");
-    return cleaned
-      .split("\n")
-      .map((line) => line.trim().replace(/\s+/g, " "))
-      .join("\n");
+    return value.replace(/[^\w\s.,!?'\n]/g, "");
   };
+  // const sanitizeInput = (value) => {
+  //   const cleaned = value.replace(/[^\w\s.,!?'\n]/g, "");
+  //   return cleaned
+  //     .split("\n")
+  //     .map((line) => line.trim().replace(/\s+/g, " "))
+  //     .join("\n");
+  // };
   //טיפול בשינוי בתיבת טקסט
   const handleChange = (e) => {
     const sanitized = sanitizeInput(e.target.value);
@@ -37,6 +40,7 @@ function MessageInput(props) {
         onKeyDown={handleKeyDown}
         placeholder="Describe the emergency..."
         className="message-input-textarea"
+        disabled={disabled}
       />
       <button
         onClick={onSend}
