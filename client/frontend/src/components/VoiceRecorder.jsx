@@ -46,8 +46,14 @@ function VoiceRecorder({ onSendAudio }) {
 
   // שליחת ההקלטה ל-App
   const sendRecording = () => {
-    if (!audioChunksRef.current.length) return;
+    if (!audioChunksRef.current.length)
+    {
+      return;
+    }
+    console.log("iiiiiiiiiiiiiiiiiiiii")
+
     const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+    console.log(blob)
     onSendAudio(blob);
     resetRecording();
   };

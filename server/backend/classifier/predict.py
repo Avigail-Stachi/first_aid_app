@@ -1,5 +1,6 @@
 import os
 
+
 # הגדרות סביבה להפחתת התראות של TF וOneDNN
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -9,14 +10,18 @@ import numpy as np
 import json
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, '..', 'model', 'saved_model1.keras')
+MODEL_PATH = os.path.join(BASE_DIR, '..', 'model','text', 'saved_model1.keras')
+MODEL_BINARY_PATH= os.path.join(BASE_DIR, '..', 'model','ambulance', 'saved_model_binary.keras')
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError(f"Model file not found at {MODEL_PATH}")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if not os.path.exists(MODEL_BINARY_PATH):
+    raise FileNotFoundError(f"Binary model file not found at {MODEL_BINARY_PATH}")
 LABEL_MAP_PATH = os.path.join(BASE_DIR, '..', 'data', 'cases.json')
 MIN_UNCERTAINTY_THRESHOLD = 0.4   #אחוז ביטחון
 UNCERTAINTY_GAP_THRESHOLD = 0.12   #פער בין תחזיות
 
-
+decide_bin=0.5
 # טעינה של מילון התוויות
 with open(LABEL_MAP_PATH, 'r', encoding='utf-8') as f:
     label_map = json.load(f)
@@ -45,7 +50,7 @@ def predict_text(text: str):
 
     predicted_class_idx = int(np.argmax(prediction)) # האינדקס של המחלקה שזה הכי הרבה סיכוי
     predicted_class_name = reverse_label_map.get(predicted_class_idx, "Unknown") #מה השם של התגית
-    predicted_confidence = prediction[0][predicted_class_idx] #מה אחוז הביטחון
+    predicted_confidence = float(prediction[0][predicted_class_idx]) #מה אחוז הביטחון
 
     # הצגת תוצאה
     print(f"\nSentence: {text}") #הדפסת המשפט שהוכנס לפונקציה
@@ -62,22 +67,41 @@ def predict_text(text: str):
 
 
     # הדפסת אחוז של התחזית ומה הפער בין 2 הראשוניפ
-    print(f"\nTop prediction: {predicted_class_name} ({predicted_confidence.item():.2%})")
+    print(f"\nTop prediction: {predicted_class_name} ({predicted_confidence:.2%})")
     print(f"Confidence gap: {confidence_gap:.3f}")
 
     if predicted_confidence < MIN_UNCERTAINTY_THRESHOLD or confidence_gap < UNCERTAINTY_GAP_THRESHOLD:
+        has_decision=False
         if predicted_confidence < MIN_UNCERTAINTY_THRESHOLD:
             # בטחון נמוך מדי
-            return "I'm not confident in the prediction. Please provide more details so I can assist better."
+            message = ("I'm not sure about the prediction. Please provide more details.")
 
         elif confidence_gap < UNCERTAINTY_GAP_THRESHOLD:
             #הפרש קטן מדי
             second_class_name = reverse_label_map.get(second_max_idx, "Unknown")
-            return (f"I'm uncertain whether it's '{predicted_class_name}' or '{second_class_name}'. "
-                    "Please provide more details to help me decide better.")
+            message= f"I'm uncertain whether it's '{predicted_class_name}' or '{second_class_name}'. ""Please provide more details to help me decide better."
 
     else:
+        has_decision=True
         print("\n The model is confident in its prediction.")
         #predicted_class_idx, predicted_class_name,
-        return predicted_class_name
+        message= predicted_class_name
+    return {
+        "label":message,
+        "has_decision":has_decision
+    }
+model_binary = tf.keras.models.load_model(MODEL_BINARY_PATH)
+
+def predict_amb(text:str):
+    input_tensor= tf.constant([text], dtype=tf.string)  #המרה של הטקסט לטנסור
+    prediction=model_binary.predict(input_tensor)[0][0]
+    print(f"Prediction: {prediction}")
+    print(f"Prediction (binary): {prediction:.2%}")
+
+    if prediction >= decide_bin:
+        print("=> Model decided: Need ambulance")
+        return True
+    print("=> Model decided: No ambulance needed")
+    return False
+
 # predict_text("My grandfather collapsed and isn’t breathing—what should I do")

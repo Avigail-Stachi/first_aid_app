@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import ChatWindow from "./components/ChatWindow";
 import MessageInput from "./components/MessageInput";
 import VoiceRecorder from "./components/VoiceRecorder";
+import LocationFetcher from "./components/LocationFetcher";
 //import Modal from "./components/Modal";
 import "./App.css";
 
@@ -13,10 +14,12 @@ function App() {
   const [history, setHistory] = useState([]);
   //const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [ambulance_flag, setAmbulance_flag] = useState(false);
+  const [isFinalDecision, setIsFinalDecision] = useState(false);
 
   const sendRequest = async () => {
-    if (!inputMsg.trim()) return;
-
+    if (!inputMsg.trim() || isFinalDecision) return;
+    console.log(5);
     const userMessage = { text: inputMsg, fromUser: true };
     setMessages((prev) => [...prev, userMessage]);
     //setIsModalOpen(true);
@@ -30,7 +33,10 @@ function App() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ history: newHistory }),
+        body: JSON.stringify({
+          history: newHistory,
+          ambulance_flag: ambulance_flag,
+        }),
       });
 
       if (!res.ok) {
@@ -39,10 +45,26 @@ function App() {
 
       const data = await res.json();
       const answer = data?.result || "Error: No result received";
-
-      setMessages((prev) => [...prev, { text: answer, fromUser: false }]);
-      setHistory([...newHistory, answer]);
+      const ambulanceFlag = data?.ambulance_flag || false;
+      const finalDecisionFlag = data?.has_decision || false;
+      const newMessages = [
+        { text: answer, fromUser: false },
+        ...(ambulanceFlag
+          ? [
+              {
+                text: "Ambulance required!",
+                fromUser: false,
+                isAmbulanceAlert: true,
+              },
+            ]
+          : []),
+      ];
+      setMessages((prev) => [...prev, ...newMessages]);
+      // setAmbulance_flag(ambulanceFlag)
+      // setHistory(newHistory);
       setInputMsg("");
+      setAmbulance_flag(ambulanceFlag);
+      setIsFinalDecision(finalDecisionFlag);
     } catch (error) {
       setMessages((prev) => [
         ...prev,
@@ -57,68 +79,110 @@ function App() {
     setMessages([]);
     setHistory([]);
     setInputMsg("");
+    setAmbulance_flag(false);
+    setIsFinalDecision(false);
   };
 
-const handleSendAudio = async (blob) => {
-  const url = URL.createObjectURL(blob);
-  const audioMessage = { audioUrl: url, fromUser: true };
-  setMessages((prev) => [...prev, audioMessage]);
-  setHistory((prev) => [...prev, "[Audio message sent]"]);
+  const handleSendAudio = async (blob) => {
+    console.log("Audio MIME type:", blob.type);
+    console.log("Audio size:", blob.size, "bytes");
 
-  const formData = new FormData();
-  formData.append("audio", blob);
+    const url = URL.createObjectURL(blob);
+    const audioMessage = { audioUrl: url, fromUser: true };
+    setMessages((prev) => [...prev, audioMessage]);
+    setHistory((prev) => [...prev, "[Audio message sent]"]);
 
-  try {
-    setIsLoading(true);
+    const formData = new FormData();
+    formData.append("audio", blob, "recording.webm"); // Give a filename with extension
 
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/audio`, {
-      method: "POST",
-      body: formData,
-    });
+    try {
+      setIsLoading(true);
+      console.log(
+        "Sending audio to:",
+        `${process.env.REACT_APP_API_URL}/audio`
+      );
 
-    if (!res.ok) throw new Error("Server error");
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/audio`, {
+        method: "POST",
+        body: formData,
+      });
 
-    const data = await res.json();
-    const transcript = data?.transcript || "";
-    const initialAnswer = data?.result || "";
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Server response:", res.status, errorText);
+        throw new Error(`Server error: ${res.status} ${errorText}`);
+      }
 
-    setMessages((prev) =>
-      prev.map((msg) =>
-        msg.audioUrl === url ? { ...msg, transcript: transcript } : msg
-      )
-    );
-    setMessages((prev) => [...prev, { text: initialAnswer, fromUser: false }]);
-    setHistory((prev) => [...prev, initialAnswer]);
+      const data = await res.json();
+      console.log("Server response data:", data);
 
-    // כאן אפשר לשלוח את כל ההיסטוריה כולל התמלול בשאילתה נפרדת
-    const newHistory = [...history, transcript];
-    const predictRes = await fetch(`${process.env.REACT_APP_API_URL}/predict`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ history: newHistory }),
-    });
+      const transcript = data?.transcript || "";
+      const initialAnswer = data?.result || "";
 
-    if (!predictRes.ok) throw new Error("Server error on predict");
-    const predictData = await predictRes.json();
-    const finalAnswer = predictData?.result || "Error: No result received";
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.audioUrl === url ? { ...msg, transcript: transcript } : msg
+        )
+      );
+      setMessages((prev) => [
+        ...prev,
+        { text: initialAnswer, fromUser: false },
+      ]);
+      // setHistory((prev) => [...prev, initialAnswer]);
 
-    setMessages((prev) => [...prev, { text: finalAnswer, fromUser: false }]);
-    setHistory((prev) => [...prev, finalAnswer]);
+      // Send history including the transcript in a separate query
+      const newHistory = [...history, transcript];
+      const predictRes = await fetch(
+        `${process.env.REACT_APP_API_URL}/predict`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            history: newHistory,
+            ambulance_flag: ambulance_flag,
+          }),
+        }
+      );
 
-  } catch (error) {
-    setMessages((prev) => [
-      ...prev,
-      { text: "Error contacting server", fromUser: false },
-    ]);
-  } finally {
-    setIsLoading(false);
-  }
-};
+      if (!predictRes.ok) {
+        const errorText = await predictRes.text();
+        console.error("Predict response:", predictRes.status, errorText);
+        throw new Error(
+          `Server error on predict: ${predictRes.status} ${errorText}`
+        );
+      }
 
+      const predictData = await predictRes.json();
+      const finalAnswer = predictData?.result || "Error: No result received";
+      const finalDecisionFlag = predictData?.has_decision || false;
+      const ambulanceFlag = predictData?.ambulance_flag || false;
+      setMessages((prev) => [
+        ...prev,
+        { text: finalAnswer, fromUser: false },
+        ...(ambulanceFlag
+          ? [
+              {
+                text: "Ambulance required!",
+                fromUser: false,
+                isAmbulanceAlert: true,
+              },
+            ]
+          : []),
+      ]);
 
-
-
-
+      setHistory(newHistory);
+      setAmbulance_flag(ambulanceFlag);
+      setIsFinalDecision(finalDecisionFlag);
+    } catch (error) {
+      console.error("Error in handleSendAudio:", error);
+      setMessages((prev) => [
+        ...prev,
+        { text: `Error contacting server: ${error.message}`, fromUser: false },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div style={{ maxWidth: "600px", margin: "0 auto", padding: "2rem" }}>
@@ -128,10 +192,39 @@ const handleSendAudio = async (blob) => {
         inputMsg={inputMsg}
         setInputMsg={setInputMsg}
         onSend={sendRequest}
-        disabled={isLoading}
+        disabled={isLoading || isFinalDecision}
       />
-      <VoiceRecorder onSendAudio={handleSendAudio} />
+      {!isFinalDecision && <VoiceRecorder onSendAudio={handleSendAudio} />}
       {/* <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} /> */}
+      {ambulance_flag && isFinalDecision && (
+        <LocationFetcher
+          onLocation={(coords) => {
+            const { lat, lng } = coords;
+
+            // שמירה כהודעה בצ'אט
+            setMessages((prev) => [
+              ...prev,
+              {
+                text: "Sending your location to emergency services...",
+                fromUser: false,
+              },
+              {
+                text: `Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+                fromUser: true,
+              },
+            ]);
+
+            // שליחה לשרת
+            fetch(`${process.env.REACT_APP_API_URL}/location`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(coords),
+            }).catch((err) => console.error("Error sending location:", err));
+          }}
+        />
+      )}
 
       <button onClick={newChat} style={{ marginTop: "1rem" }}>
         Start New Chat
@@ -139,5 +232,4 @@ const handleSendAudio = async (blob) => {
     </div>
   );
 }
-
 export default App;

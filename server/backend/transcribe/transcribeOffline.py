@@ -12,10 +12,11 @@ if not os.path.isdir(model_path_vosk):
     raise FileNotFoundError(f"Model folder not found: {model_path_vosk}")
 model = Model(model_path_vosk)
 
-
+ffmpeg_path = r"C:\ffmpeg\bin\ffmpeg.exe"
 
 def convert_format(input_path, output_path):
-    ffmpeg_path = os.path.join(BASE_DIR, "..", "..", "ffmpeg", "bin", "ffmpeg.exe")
+    print(55)
+    # ffmpeg_path = os.path.join(BASE_DIR, "..", "..", "ffmpeg", "bin", "ffmpeg.exe")
     command = [
         ffmpeg_path,
         "-loglevel", "quiet",  # רק שגיאות חזקות
@@ -26,8 +27,11 @@ def convert_format(input_path, output_path):
         "-sample_fmt", "s16",
         output_path
     ]
-    subprocess.run(command, check=True)
-
+    try:
+        subprocess.run(command, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"ffmpeg failed: {e}")
+        raise
 
 def transcribe_audio(wav_path):
     wf = wave.open(wav_path, "rb")
@@ -44,10 +48,13 @@ def transcribe_audio(wav_path):
     return result.get("text", "")
 
 # model_path_vosk = r"C:\project\projectAID\mycode\vosk-model-small-en-us-0.15\vosk-model-small-en-us-0.15"
+
+
+
 # input_path = r"C:\Users\User\Documents\Sound Recordings\Recording (3).m4a" # אפשר כל סוג
 # wav_path = r"C:\project\projectAID\data\file1.wav"
 # convert_format(input_path, wav_path)
-# text = transcribe_audio(wav_path, model_path_vosk)
+# text = transcribe_audio(wav_path)
 # print("Recognized text:", text)
 
 
