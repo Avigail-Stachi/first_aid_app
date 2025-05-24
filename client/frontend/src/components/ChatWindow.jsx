@@ -40,22 +40,42 @@ const ChatWindow = ({ messages }) => {
               🚨 Emergency! Ambulance needed
             </div>
           )}
-          {msg.text && (
-            <p
-              style={{
-                display: "inline-block",
-                backgroundColor: msg.fromUser ? "#DCF8C6" : "#EAEAEA",
-                color: "#333",
-                padding: "8px 12px",
-                borderRadius: "15px",
-                maxWidth: "80%",
-                wordWrap: "break-word",
-                margin: 0,
-              }}
-            >
-              {msg.text}
-            </p>
-          )}
+          {msg.text &&
+            (msg.isLink ? (
+              <a
+                href={msg.text}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-block",
+                  backgroundColor: msg.fromUser ? "#DCF8C6" : "#EAEAEA",
+                  color: "#1a0dab",
+                  padding: "8px 12px",
+                  borderRadius: "15px",
+                  maxWidth: "80%",
+                  wordWrap: "break-word",
+                  textDecoration: "underline",
+                  margin: 0,
+                }}
+              >
+                {msg.text}
+              </a>
+            ) : (
+              <p
+                style={{
+                  display: "inline-block",
+                  backgroundColor: msg.fromUser ? "#DCF8C6" : "#EAEAEA",
+                  color: "#333",
+                  padding: "8px 12px",
+                  borderRadius: "15px",
+                  maxWidth: "80%",
+                  wordWrap: "break-word",
+                  margin: 0,
+                }}
+              >
+                {msg.text}
+              </p>
+            ))}
           {msg.audioUrl && (
             <audio
               controls
