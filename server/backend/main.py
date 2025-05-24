@@ -74,7 +74,7 @@ async def predict(request_body: RequestBody):
             raise HTTPException(status_code=500, detail='Prediction failed')
         label=prediction["label"]
         has_decision=prediction["has_decision"]
-        if not request_body.ambulance_flag:
+        if not request_body.ambulance_flag and has_decision:
             ambulance_flag=class_pred.predict_amb(latest_msg)
         else:
             ambulance_flag = request_body.ambulance_flag
@@ -88,6 +88,10 @@ async def predict(request_body: RequestBody):
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
 
+@app.post("/location")
+async def receive_location(location: Location):
+    print("Received location:", location)
+    return {"message": "Location received", "lat": location.lat, "lng": location.lng}
 
 # @app.post('/audio')
 # async def process_audio(audio: UploadFile = File(...)):
