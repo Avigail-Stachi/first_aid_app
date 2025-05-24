@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 //import { FaTrash } from 'react-icons/fa';
 
 import ChatWindow from "./components/ChatWindow";
@@ -16,6 +16,39 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [ambulance_flag, setAmbulance_flag] = useState(false);
   const [isFinalDecision, setIsFinalDecision] = useState(false);
+  const [locationSent, setLocationSent] = useState(false);
+  // פונקציה זהה בזיכרון בין רינדורים
+  const handleLocation = useCallback((coords) => {
+    const { lat, lng } = coords;
+    const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`;
+    // שמירה כהודעה בצ'אט
+    setMessages((prev) => [
+      ...prev,
+      {
+        text: "I found this location on Google Maps:",
+        fromUser: false,
+      },
+      {
+        text: mapsUrl,
+        fromUser: false,
+        isLink: true, // אם תרצי, תעבירי flag כדי לטעון אותו כרכיב <a>
+      },
+      {
+        text: "Is this correct? If not, please enter your address or coordinates manually.",
+        fromUser: false,
+      },
+    ]);
+
+    // שליחה לשרת
+    fetch(`${process.env.REACT_APP_API_URL}/location`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(coords),
+    }).catch((err) => console.error("Error sending location:", err));
+
+    // מונע שליחה חוזרת
+    setLocationSent(true);
+  }, []);
 
   const sendRequest = async () => {
     if (!inputMsg.trim() || isFinalDecision) return;
@@ -196,7 +229,7 @@ function App() {
       />
       {!isFinalDecision && <VoiceRecorder onSendAudio={handleSendAudio} />}
       {/* <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} /> */}
-      {ambulance_flag && isFinalDecision && (
+      {/* {ambulance_flag && isFinalDecision && (
         <LocationFetcher
           onLocation={(coords) => {
             const { lat, lng } = coords;
@@ -224,6 +257,9 @@ function App() {
             }).catch((err) => console.error("Error sending location:", err));
           }}
         />
+      )} */}
+      {ambulance_flag && isFinalDecision && !locationSent && (
+        <LocationFetcher onLocation={handleLocation} />
       )}
 
       <button onClick={newChat} style={{ marginTop: "1rem" }}>
