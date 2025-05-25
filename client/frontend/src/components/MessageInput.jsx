@@ -3,7 +3,7 @@
 
 import React from "react";
 
-import "../styles.css/MessageInput.css";
+import "../styles/MessageInput.css";
 
 function MessageInput(props) {
   const { inputMsg, setInputMsg, onSend, disabled } = props;
