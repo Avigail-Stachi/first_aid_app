@@ -124,7 +124,7 @@ function App() {
     const url = URL.createObjectURL(blob);
     const audioMessage = { audioUrl: url, fromUser: true };
     setMessages((prev) => [...prev, audioMessage]);
-    setHistory((prev) => [...prev, "[Audio message sent]"]);
+   // setHistory((prev) => [...prev, transcript]);
 
     const formData = new FormData();
     formData.append("audio", blob, "recording.webm"); // Give a filename with extension
@@ -152,16 +152,18 @@ function App() {
 
       const transcript = data?.transcript || "";
       const initialAnswer = data?.result || "";
+      console.log("Transcript:", transcript);
+      console.log("Initial answer:", initialAnswer);
 
       setMessages((prev) =>
         prev.map((msg) =>
           msg.audioUrl === url ? { ...msg, transcript: transcript } : msg
         )
       );
-      setMessages((prev) => [
-        ...prev,
-        { text: initialAnswer, fromUser: false },
-      ]);
+      // setMessages((prev) => [
+      //   ...prev,
+      //   { text: initialAnswer, fromUser: false },
+      // ]);
       // setHistory((prev) => [...prev, initialAnswer]);
 
       // Send history including the transcript in a separate query
@@ -185,7 +187,7 @@ function App() {
           `Server error on predict: ${predictRes.status} ${errorText}`
         );
       }
-
+      
       const predictData = await predictRes.json();
       const finalAnswer = predictData?.result || "Error: No result received";
       const finalDecisionFlag = predictData?.has_decision || false;
