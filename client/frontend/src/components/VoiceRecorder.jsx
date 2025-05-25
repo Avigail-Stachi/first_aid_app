@@ -10,7 +10,7 @@ function VoiceRecorder({ onSendAudio }) {
   // התחלת הקלטה
   const startRecording = async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert("אין תמיכה במיקרופון בדפדפן שלך");
+      alert("Your browser does not support audio recording.");
       return;
     }
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });

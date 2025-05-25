@@ -34,7 +34,7 @@ function MessageInput(props) {
   return (
     <div className="message-input-container">
       <textarea
-        type="text"
+        // type="text"
         value={inputMsg}
         onChange={handleChange}
         onKeyDown={handleKeyDown}

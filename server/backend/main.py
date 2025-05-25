@@ -1,7 +1,7 @@
 import os
 import uvicorn
 import shutil
-
+import time
 from fastapi import FastAPI, Request, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
@@ -9,8 +9,8 @@ from pydantic import BaseModel
 
 import classifier.predict as class_pred
 import contact.sms_sender as sms_sender
+import transcribe.transcribeOffline as transcribeOffline
 #from backend.classifier.predict import predict_amb
-from transcribe import transcribeOffline
 app = FastAPI()
 TEMP_UPLOAD_DIR = "temp_uploads"
 
@@ -42,6 +42,7 @@ app.add_middleware(
 )
 print("ENVIRONMENT:", ENVIRONMENT)
 print("CORS origins:", origins)
+
 
 class RequestBody(BaseModel):
     history: list[str]
@@ -159,16 +160,44 @@ async def receive_location(location: Location):
 
 @app.post("/audio")
 async def receive_audio(audio: UploadFile = File(...)):
-    print("hh2", flush=True)
+    if not os.path.exists(TEMP_UPLOAD_DIR):
+        os.makedirs(TEMP_UPLOAD_DIR)
 
-    # print("jfdjfddddddddddd")
-    # # שמירת הקובץ עם השם המקורי (או שם קבוע אחר)
-    # file_location = f"recordings/{audio.filename}"
-    # with open(file_location, "wb") as buffer:
-    #     shutil.copyfileobj(audio.file, buffer)
-    # return {"message": "Audio saved successfully", "filename": audio.filename}
-    print("קיבלתי את הקובץ:", audio.filename)
-    return {"status": "ok", "filename": audio.filename}
+    try:
+        # שמירת הקובץ המקורי
+        timestamp = int(time.time())
+        filename = f"{timestamp}_{audio.filename or 'recording'}"
+        input_path = os.path.join(TEMP_UPLOAD_DIR, filename)
+
+        content = await audio.read()
+        with open(input_path, "wb") as f:
+            f.write(content)
+
+        # יצירת נתיב wav
+        wav_path = os.path.splitext(input_path)[0] + ".wav"
+
+        # המרת פורמט
+        transcribeOffline.convert_format(input_path, wav_path)
+
+        # תמלול
+        transcript = transcribeOffline.transcribe_audio(wav_path)
+
+        # חיזוי לפי הטקסט
+        prediction = class_pred.predict_text(transcript)
+
+        # ניקוי קבצים
+        if os.path.exists(input_path):
+            os.remove(input_path)
+        if os.path.exists(wav_path):
+            os.remove(wav_path)
+
+        return {
+            "transcript": transcript,
+            "result": prediction
+        }
+    except Exception as e:
+        print(f"Error processing audio: {e}")
+        raise HTTPException(status_code=500, detail=f"Audio processing failed: {str(e)}")
 
 @app.post("/send_sms")
 async def send_sms(location:Location):
