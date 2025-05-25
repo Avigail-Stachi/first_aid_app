@@ -13,6 +13,8 @@ if not os.path.isdir(model_path_vosk):
 model = Model(model_path_vosk)
 
 ffmpeg_path = r"C:\ffmpeg\bin\ffmpeg.exe"
+if not os.path.isdir(model_path_vosk):
+    raise FileNotFoundError(f"Model folder not found: {model_path_vosk}")
 
 def convert_format(input_path, output_path):
     print(55)
