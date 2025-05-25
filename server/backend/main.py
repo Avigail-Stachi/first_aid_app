@@ -16,7 +16,7 @@ TEMP_UPLOAD_DIR = "temp_uploads"
 
 #כשהמצב הוא לא פיתוח אז לעשות בקומנד
 #set ENVIRONMENT=production
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development") 
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
 if ENVIRONMENT == "production":
     origins = [
@@ -27,8 +27,8 @@ if ENVIRONMENT == "production":
 
 else:
     origins = [
-        "http://localhost:3000",  
-        "http://127.0.0.1:3000", 
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
     ]
     allow_methods = ["*"]
     allow_headers = ["*"]
@@ -74,10 +74,13 @@ async def predict(request_body: RequestBody):
             raise HTTPException(status_code=500, detail='Prediction failed')
         label=prediction["label"]
         has_decision=prediction["has_decision"]
-        if not request_body.ambulance_flag and has_decision:
-            ambulance_flag=class_pred.predict_amb(latest_msg)
+        if has_decision:
+            if not request_body.ambulance_flag:
+                ambulance_flag = class_pred.predict_amb(latest_msg)
+            else:
+                ambulance_flag = request_body.ambulance_flag
         else:
-            ambulance_flag = request_body.ambulance_flag
+            ambulance_flag = False
         print("Ambulance flag:", ambulance_flag)
         return {"result": label,
                 "has_decision": has_decision,

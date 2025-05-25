@@ -114,6 +114,7 @@ function App() {
     setInputMsg("");
     setAmbulance_flag(false);
     setIsFinalDecision(false);
+    setLocationSent(false);
   };
 
   const handleSendAudio = async (blob) => {
