@@ -1,0 +1,65 @@
+.location-fetcher-container {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  max-width: 400px;
+  background-color: #fafafa;
+  font-family: Arial, sans-serif;
+}
+
+.info-message {
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.error-message {
+  color: #d9534f;
+  margin-bottom: 1rem;
+  font-weight: bold;
+}
+
+.location-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.input-group label {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.input-group input {
+  padding: 8px;
+  font-size: 1rem;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  transition: border-color 0.3s;
+}
+
+.input-group input:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+.submit-button {
+  padding: 10px 16px;
+  background-color: #007bff;
+  border: none;
+  color: white;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background-color 0.3s;
+}
+
+.submit-button:hover {
+  background-color: #0056b3;
+}
