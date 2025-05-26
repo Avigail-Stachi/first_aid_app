@@ -3,10 +3,10 @@ import nltk
 import sys  # לנתיב של EDA
 from sklearn.model_selection import train_test_split
 import os
-INPUT_FILE = "../emergency_cases_clean5.csv"
+INPUT_FILE = "../text/emergency_cases_clean5.csv"
 # OUTPUT_FILE = "./expend_data/emergency_cases_clean5_expend_7.csv"
-TRAIN_FILE = "../train_augmented.csv"
-TEST_FILE = "../test.csv"
+TRAIN_FILE = "../text/train_augmented.csv"
+TEST_FILE = "../text/test.csv"
 
 # כמה גרסאות לכל טקסט
 NUM_AUG = 10
