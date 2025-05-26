@@ -5,6 +5,7 @@ import ChatWindow from "./components/ChatWindow";
 import MessageInput from "./components/MessageInput";
 import VoiceRecorder from "./components/VoiceRecorder";
 import LocationFetcher from "./components/LocationFetcher";
+import ImageCapture from "./components/ImageCapture";
 //import Modal from "./components/Modal";
 import "./App.css";
 
@@ -18,6 +19,8 @@ function App() {
   const [ambulance_flag, setAmbulance_flag] = useState(false);
   const [isFinalDecision, setIsFinalDecision] = useState(false);
   const [locationSent, setLocationSent] = useState(false);
+  const [showImageCapture, setShowImageCapture] = useState(false);
+
   // פונקציה זהה בזיכרון בין רינדורים
   const handleLocation = useCallback((coords) => {
     const { lat, lng } = coords;
@@ -81,6 +84,9 @@ function App() {
       const answer = data?.result || "Error: No result received";
       const ambulanceFlag = data?.ambulance_flag || false;
       const finalDecisionFlag = data?.has_decision || false;
+      if (answer.toLowerCase().includes("burns")) {
+        setShowImageCapture(true);
+      }
       const newMessages = [
         { text: answer, fromUser: false },
         ...(ambulanceFlag
@@ -116,6 +122,7 @@ function App() {
     setAmbulance_flag(false);
     setIsFinalDecision(false);
     setLocationSent(false);
+    setShowImageCapture(false);
   };
 
   const handleSendAudio = async (blob) => {
@@ -125,7 +132,7 @@ function App() {
     const url = URL.createObjectURL(blob);
     const audioMessage = { audioUrl: url, fromUser: true };
     setMessages((prev) => [...prev, audioMessage]);
-   // setHistory((prev) => [...prev, transcript]);
+    // setHistory((prev) => [...prev, transcript]);
 
     const formData = new FormData();
     formData.append("audio", blob, "recording.webm"); // Give a filename with extension
@@ -188,7 +195,7 @@ function App() {
           `Server error on predict: ${predictRes.status} ${errorText}`
         );
       }
-      
+
       const predictData = await predictRes.json();
       const finalAnswer = predictData?.result || "Error: No result received";
       const finalDecisionFlag = predictData?.has_decision || false;
@@ -220,7 +227,6 @@ function App() {
       setIsLoading(false);
     }
   };
-
 
   if (!showChat) {
     return <HomeScreen onStartChat={() => setShowChat(true)} />;
@@ -266,6 +272,21 @@ function App() {
           }}
         />
       )} */}
+      {showImageCapture && (
+  <ImageCapture
+    onCapture={(blob) => {
+      // אפשר לשמור את התמונה, לשלוח לשרת, או להציג אותה בצ'אט
+      const imageUrl = URL.createObjectURL(blob);
+      setMessages((prev) => [
+        ...prev,
+        { imageUrl, fromUser: true }
+      ]);
+      setShowImageCapture(false);
+    }}
+    onCancel={() => setShowImageCapture(false)}
+  />
+)}
+
       {ambulance_flag && isFinalDecision && !locationSent && (
         <LocationFetcher onLocation={handleLocation} />
       )}

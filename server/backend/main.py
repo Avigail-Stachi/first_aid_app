@@ -76,12 +76,18 @@ async def predict(request_body: RequestBody):
         label=prediction["label"]
         has_decision=prediction["has_decision"]
         if has_decision:
-            if not request_body.ambulance_flag:
-                ambulance_flag = class_pred.predict_amb(latest_msg)
+            if label.lower() == "burns":
+                print("Burns case detected. Waiting for image before ambulance decision.")
+                ambulance_flag = False
+                label += " (awaiting image for severity assessment)"
             else:
-                ambulance_flag = request_body.ambulance_flag
+                if not request_body.ambulance_flag:
+                    ambulance_flag = class_pred.predict_amb(latest_msg)
+                else:
+                    ambulance_flag = request_body.ambulance_flag
         else:
             ambulance_flag = False
+
         print("Ambulance flag:", ambulance_flag)
         return {"result": label,
                 "has_decision": has_decision,
