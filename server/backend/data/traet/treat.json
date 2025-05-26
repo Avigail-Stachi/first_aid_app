@@ -1,0 +1,114 @@
+[
+  {
+    "case_type": "cpr",
+    "degree": null,
+    "short_instruction": "If you encounter a person who has suddenly collapsed and is unresponsive (unconscious), perform only a strong and rapid heart massage in the center of the patient's chest, at a rate of at least 100 compressions per minute after you have dialed 101 and called for help. The application has contacted MDA if you are connected to the Internet\nIf you are in a public place, ask for a defibrillator, connect it and follow its instructions.",
+    "detailed_instruction": "If the person is unresponsive and not breathing, call emergency services immediately. Start chest compressions at a rate of 100-120 per minute, pushing hard and fast in the center of the chest. Continue until help arrives or the person recovers.",
+    "image_url": "https://example.com/images/cpr.jpg",
+    "video_url": "https://example.com/videos/cpr.mp4"
+  },
+  {
+    "case_type": "fainting",
+    "degree": null,
+    "short_instruction": "Lay the person down and raise their legs.",
+    "detailed_instruction": "Keep airway open, elevate legs. Breathing instructions: Flower and candle (flower = deep, slow breath as if smelling a flower, candle = long, deep breath as if blowing out a candle). Continue CPR. When the patient wakes up, place him on the floor until he is fully recovered.",
+    "image_url": "https://example.com/images/fainting.jpg",
+    "video_url": "https://example.com/videos/fainting.mp4"
+  },
+  {
+    "case_type": "drowning",
+    "degree": null,
+    "short_instruction": "Safety – Be careful not to drift, it will only cause you to be pulled out of the water. In shallow water, push the jaw. Cover the victim by the head, tilt the neck, and protect the spine from damage. There is a concern about maintaining body heat. Continue according to the resuscitation scheme.",
+    "detailed_instruction":"If you notice a drowning person:\n\nCall a rescuer immediately!\n\nDo not enter rough seas if you are not trained to do so, you may be the next victim!\n\nWhen the victim is removed from the water, treat according to your training\n\nThe victim's airway must be secured\n\nIf the victim is conscious, he must be seated if possible to facilitate his breathing\n\nYou must immediately dial 101 and call an MDA team. The app will inform you whether it has contacted MDA.\n\nIf the victim is not breathing or does not show signs of life, CPR must be performed!",
+    "image_url": "https://example.com/images/drowning.jpg",
+    "video_url": "https://example.com/videos/drowning.mp4"
+  },
+  {
+    "case_type": "electric_shock",
+    "degree": null,
+    "short_instruction": "Turn off power source before helping the victim.",
+    "detailed_instruction": "Do not touch the person if still in contact with electricity. Turn off the power source if possible. Once safe, check responsiveness and breathing. If not breathing, call emergency services and begin CPR if trained.",
+    "image_url": "https://example.com/images/electric_shock.jpg",
+    "video_url": "https://example.com/videos/electric_shock.mp4"
+  },
+  {
+    "case_type": "choking",
+    "degree": null,
+    "short_instruction": "Perform abdominal thrusts until object is expelled.",
+    "detailed_instruction": "If the person cannot breathe or talk and is coughing weakly, perform abdominal thrusts (Heimlich maneuver). Continue until the obstruction is cleared or the person becomes unconscious. Call emergency services immediately.",
+    "image_url": "https://example.com/images/choking.jpg",
+    "video_url": "https://example.com/videos/choking.mp4"
+  },
+  {
+    "case_type": "rabies",
+    "degree": null,
+    "short_instruction": "Clean the wound and seek immediate medical attention.",
+    "detailed_instruction": "If bitten by an animal suspected to have rabies, wash the wound thoroughly with soap and water for at least 15 minutes. Seek emergency medical care immediately for rabies vaccination and treatment.",
+    "image_url": "https://example.com/images/rabies.jpg",
+    "video_url": "https://example.com/videos/rabies.mp4"
+  },
+  {
+    "case_type": "bee_sting",
+    "degree": null,
+    "short_instruction": "Remove the stinger and clean the area.",
+    "detailed_instruction": "Remove the bee stinger promptly by scraping it out with a fingernail or credit card. Clean the area with soap and water. Apply a cold pack to reduce swelling. Seek emergency help if allergic reaction symptoms develop.",
+    "image_url": "https://example.com/images/bee_sting.jpg",
+    "video_url": "https://example.com/videos/bee_sting.mp4"
+  },
+  {
+    "case_type": "snake_bite",
+    "degree": null,
+    "short_instruction": "Keep the victim calm and immobilize the bitten limb.",
+    "detailed_instruction": "Call emergency services immediately. Keep the victim calm and still. Immobilize the bitten limb at heart level or slightly below. Do not apply tourniquets or attempt to suck out venom. Monitor breathing and consciousness.",
+    "image_url": "https://example.com/images/snake_bite.jpg",
+    "video_url": "https://example.com/videos/snake_bite.mp4"
+  },
+  {
+    "case_type": "scorpion_sting",
+    "degree": null,
+    "short_instruction": "Clean the area and apply a cold compress.",
+    "detailed_instruction": "Wash the sting site with soap and water. Apply a cold compress to reduce pain and swelling. Keep the victim calm and seek medical attention immediately, especially for children or if severe symptoms occur.",
+    "image_url": "https://example.com/images/scorpion_sting.jpg",
+    "video_url": "https://example.com/videos/scorpion_sting.mp4"
+  },
+  {
+    "case_type": "wounds",
+    "degree": null,
+    "short_instruction": "Stop bleeding and clean the wound.",
+    "detailed_instruction": "Apply firm pressure with a clean cloth or bandage to stop bleeding. Once bleeding is controlled, clean the wound with water and cover with sterile dressing. Seek medical care for deep, large, or infected wounds.",
+    "image_url": "https://example.com/images/wounds.jpg",
+    "video_url": "https://example.com/videos/wounds.mp4"
+  },
+  {
+    "case_type": "burns",
+    "degree": 1,
+    "short_instruction": "Cool the burn with running water for 20 minutes.",
+    "detailed_instruction": "Immerse or run cool (not cold) water over the burn area for 20 minutes. Do not apply creams or oils. Cover the burn with a clean, non-stick dressing. Seek medical help if the burn is large or on sensitive areas.",
+    "image_url": "https://example.com/images/burns_degree1.jpg",
+    "video_url": "https://example.com/videos/burns_degree1.mp4"
+  },
+  {
+    "case_type": "burns",
+    "degree": 2,
+    "short_instruction": "Call emergency services and cover with sterile dressing.",
+    "detailed_instruction": "For deeper burns with blisters, call emergency help immediately. Avoid breaking blisters and do not apply ointments. Cover the burn with sterile, non-adhesive dressing and keep the victim warm.",
+    "image_url": "https://example.com/images/burns_degree2.jpg",
+    "video_url": "https://example.com/videos/burns_degree2.mp4"
+  },
+  {
+    "case_type": "burns",
+    "degree": 3,
+    "short_instruction": "Call emergency services immediately and do not remove clothing.",
+    "detailed_instruction": "For severe burns penetrating all skin layers, call emergency services immediately. Do not remove burnt clothing stuck to skin. Cover the victim with a clean sheet and prevent hypothermia. Do not immerse in water.",
+    "image_url": "https://example.com/images/burns_degree3.jpg",
+    "video_url": "https://example.com/videos/burns_degree3.mp4"
+  },
+  {
+    "case_type": "fractures",
+    "degree": null,
+    "short_instruction": "Immobilize the limb and seek medical help.",
+    "detailed_instruction": "Do not attempt to realign the bone. Immobilize the injured limb with splints or padding. Keep the person calm and still. Seek immediate medical assistance to prevent further damage.",
+    "image_url": "https://example.com/images/fractures.jpg",
+    "video_url": "https://example.com/videos/fractures.mp4"
+  }
+]

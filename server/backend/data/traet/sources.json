@@ -1,0 +1,114 @@
+[
+  {
+    "case_type": "cpr",
+    "degree": null,
+    "short_src": "https://www.mdais.org/101/cpr-hands-only",
+    "detailed_src": "https://example.com/cpr/detailed.txt",
+    "image_src": "https://example.com/images/cpr.jpg",
+    "video_src": "https://example.com/videos/cpr.mp4"
+  },
+  {
+    "case_type": "fainting",
+    "degree": null,
+    "short_src": "https://example.com/fainting/short.txt",
+    "detailed_src": "First Aid Course Summary",
+    "image_src": "https://example.com/images/fainting.jpg",
+    "video_src": "https://example.com/videos/fainting.mp4"
+  },
+  {
+    "case_type": "drowning",
+    "degree": null,
+    "short_src": "First Aid Course Summary",
+    "detailed_src": "https://www.mdais.org/101/drowning",
+    "image_src": "https://example.com/images/drowning.jpg",
+    "video_src": "https://example.com/videos/drowning.mp4"
+  },
+  {
+    "case_type": "electric_shock",
+    "degree": null,
+    "short_src": "https://example.com/electric_shock/short.txt",
+    "detailed_src": "https://example.com/electric_shock/detailed.txt",
+    "image_src": "https://example.com/images/electric_shock.jpg",
+    "video_src": "https://example.com/videos/electric_shock.mp4"
+  },
+  {
+    "case_type": "choking",
+    "degree": null,
+    "short_src": "https://example.com/choking/short.txt",
+    "detailed_src": "https://example.com/choking/detailed.txt",
+    "image_src": "https://example.com/images/choking.jpg",
+    "video_src": "https://example.com/videos/choking.mp4"
+  },
+  {
+    "case_type": "rabies",
+    "degree": null,
+    "short_src": "https://example.com/rabies/short.txt",
+    "detailed_src": "https://example.com/rabies/detailed.txt",
+    "image_src": "https://example.com/images/rabies.jpg",
+    "video_src": "https://example.com/videos/rabies.mp4"
+  },
+  {
+    "case_type": "bee_sting",
+    "degree": null,
+    "short_src": "https://example.com/bee_sting/short.txt",
+    "detailed_src": "https://example.com/bee_sting/detailed.txt",
+    "image_src": "https://example.com/images/bee_sting.jpg",
+    "video_src": "https://example.com/videos/bee_sting.mp4"
+  },
+  {
+    "case_type": "snake_bite",
+    "degree": null,
+    "short_src": "https://example.com/snake_bite/short.txt",
+    "detailed_src": "https://example.com/snake_bite/detailed.txt",
+    "image_src": "https://example.com/images/snake_bite.jpg",
+    "video_src": "https://example.com/videos/snake_bite.mp4"
+  },
+  {
+    "case_type": "scorpion_sting",
+    "degree": null,
+    "short_src": "https://example.com/scorpion_sting/short.txt",
+    "detailed_src": "https://example.com/scorpion_sting/detailed.txt",
+    "image_src": "https://example.com/images/scorpion_sting.jpg",
+    "video_src": "https://example.com/videos/scorpion_sting.mp4"
+  },
+  {
+    "case_type": "wounds",
+    "degree": null,
+    "short_src": "https://example.com/wounds/short.txt",
+    "detailed_src": "https://example.com/wounds/detailed.txt",
+    "image_src": "https://example.com/images/wounds.jpg",
+    "video_src": "https://example.com/videos/wounds.mp4"
+  },
+  {
+    "case_type": "burns",
+    "degree": 1,
+    "short_src": "https://example.com/burns/degree1/short.txt",
+    "detailed_src": "https://example.com/burns/degree1/detailed.txt",
+    "image_src": "https://example.com/images/burns_degree1.jpg",
+    "video_src": "https://example.com/videos/burns_degree1.mp4"
+  },
+  {
+    "case_type": "burns",
+    "degree": 2,
+    "short_src": "https://example.com/burns/degree2/short.txt",
+    "detailed_src": "https://example.com/burns/degree2/detailed.txt",
+    "image_src": "https://example.com/images/burns_degree2.jpg",
+    "video_src": "https://example.com/videos/burns_degree2.mp4"
+  },
+  {
+    "case_type": "burns",
+    "degree": 3,
+    "short_src": "https://example.com/burns/degree3/short.txt",
+    "detailed_src": "https://example.com/burns/degree3/detailed.txt",
+    "image_src": "https://example.com/images/burns_degree3.jpg",
+    "video_src": "https://example.com/videos/burns_degree3.mp4"
+  },
+  {
+    "case_type": "fractures",
+    "degree": null,
+    "short_src": "https://example.com/fractures/short.txt",
+    "detailed_src": "https://example.com/fractures/detailed.txt",
+    "image_src": "https://example.com/images/fractures.jpg",
+    "video_src": "https://example.com/videos/fractures.mp4"
+  }
+]
