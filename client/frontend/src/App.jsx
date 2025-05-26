@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 //import { FaTrash } from 'react-icons/fa';
-
+import HomeScreen from "./components/HomeScreen";
 import ChatWindow from "./components/ChatWindow";
 import MessageInput from "./components/MessageInput";
 import VoiceRecorder from "./components/VoiceRecorder";
@@ -9,6 +9,7 @@ import LocationFetcher from "./components/LocationFetcher";
 import "./App.css";
 
 function App() {
+  const [showChat, setShowChat] = useState(false);
   const [inputMsg, setInputMsg] = useState("");
   const [messages, setMessages] = useState([]);
   const [history, setHistory] = useState([]);
@@ -220,6 +221,10 @@ function App() {
     }
   };
 
+
+  if (!showChat) {
+    return <HomeScreen onStartChat={() => setShowChat(true)} />;
+  }
   return (
     <div style={{ maxWidth: "600px", margin: "0 auto", padding: "2rem" }}>
       <h1>ResQPal Chat</h1>
