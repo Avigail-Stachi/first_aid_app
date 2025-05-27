@@ -16,16 +16,42 @@ def load_and_preprocess_image(img_path, target_size=(240, 240)):
     img_array /= 255.0
     return img_array
 
-def predict_with_uncertainty(model,img_path,):
+def predict_multi_label(img_path, threshold=0.5):
     img_array = load_and_preprocess_image(img_path)
-    predictions = model_photo.predict(img_array)
+    predictions = model_photo.predict(img_array)[0]  # וקטור הסתברויות לכל הקלאסים
 
-    # Assuming the model outputs probabilities for each class
-    predicted_class_idx = np.argmax(predictions[0])
-    predicted_confidence = predictions[0][predicted_class_idx]
+    # רשימת אינדקסים של מחלקות שהסיכוי שלהם מעל סף (ככל הנראה קיימות בתמונה)
+    positive_classes = [i for i, prob in enumerate(predictions) if prob >= threshold]
 
-    # Calculate uncertainty
-    second_max = np.partition(predictions[0], -2)[-2]  # Second highest probability
-    uncertainty_gap = predicted_confidence - second_max
+    # הערכים המדויקים (הסתברויות) של כל המחלקות
+    probabilities = predictions.tolist()
 
-    return predicted_class_idx, predicted_confidence, uncertainty_gap
+    # נחשב אי-וודאות כפער בין ההסתברות הגבוהה ביותר לשנייה בגודלה, אם תרצי
+    sorted_probs = np.sort(predictions)
+    uncertainty_gap = float(sorted_probs[-1] - sorted_probs[-2]) if len(predictions) > 1 else 1.0
+
+    return {
+        "positive_classes": positive_classes,           # רשימת מחלקות חיוביות
+        "all_probabilities": probabilities,             # כל ההסתברויות
+        "uncertainty_gap": uncertainty_gap               # פער אי-וודאות
+    }
+
+#
+# def predict_with_uncertainty(img_path,):
+#     img_array = load_and_preprocess_image(img_path)
+#     predictions = model_photo.predict(img_array)[0]
+#
+#     # Assuming the model outputs probabilities for each class
+#     predicted_class_idx = np.argmax(predictions)
+#     predicted_confidence = predictions[predicted_class_idx]
+#
+#     # Calculate uncertainty
+#     second_max = np.partition(predictions, -2)[-2]  # Second highest probability
+#     uncertainty_gap = predicted_confidence - second_max
+#
+#     return {
+#         "predicted_class_idx": predicted_class_idx,
+#         "predicted_confidence": float(predicted_confidence),
+#         "uncertainty_gap": float(uncertainty_gap),
+#         "all_probabilities": predictions.tolist()
+#     }

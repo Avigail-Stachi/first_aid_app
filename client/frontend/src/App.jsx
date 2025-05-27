@@ -20,6 +20,7 @@ function App() {
   const [isFinalDecision, setIsFinalDecision] = useState(false);
   const [locationSent, setLocationSent] = useState(false);
   const [showImageCapture, setShowImageCapture] = useState(false);
+  const [burnsDetected, setBurnsDetected] = useState(null);
 
   // פונקציה זהה בזיכרון בין רינדורים
   const handleLocation = useCallback((coords) => {
@@ -84,9 +85,16 @@ function App() {
       const answer = data?.result || "Error: No result received";
       const ambulanceFlag = data?.ambulance_flag || false;
       const finalDecisionFlag = data?.has_decision || false;
-      if (answer.toLowerCase().includes("burns")) {
-        setShowImageCapture(true);
-      }
+if (data?.request_image) {
+  console.log("Server requested an image. Opening camera...");
+  setShowImageCapture(true);
+}
+      // if (data.burns_detected) {
+      //   setBurnsDetected(data.burns_detected);
+      //   setShowImageCapture(true);
+      // } else {
+      //   setBurnsDetected(null);
+      // }
       const newMessages = [
         { text: answer, fromUser: false },
         ...(ambulanceFlag
@@ -273,19 +281,20 @@ function App() {
         />
       )} */}
       {showImageCapture && (
-  <ImageCapture
-    onCapture={(blob) => {
-      // אפשר לשמור את התמונה, לשלוח לשרת, או להציג אותה בצ'אט
-      const imageUrl = URL.createObjectURL(blob);
-      setMessages((prev) => [
-        ...prev,
-        { imageUrl, fromUser: true }
-      ]);
-      setShowImageCapture(false);
-    }}
-    onCancel={() => setShowImageCapture(false)}
-  />
-)}
+        <ImageCapture
+          burnsDetected={burnsDetected}
+          onCancel={() => {
+            setShowImageCapture(false);
+            setBurnsDetected(null);
+          }}
+          onCapture={(result) => {
+            console.log("Image capture result:", result);
+            setShowImageCapture(false);
+            setBurnsDetected(null);
+            // כאן תוכל להוסיף לוגיקה נוספת אם תרצה
+          }}
+        />
+      )}
 
       {ambulance_flag && isFinalDecision && !locationSent && (
         <LocationFetcher onLocation={handleLocation} />

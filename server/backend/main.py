@@ -1,18 +1,27 @@
 import os
 import uvicorn
-import shutil
 import time
+import shutil
+
+from typing import Optional
 from fastapi import FastAPI, Request, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
+from pooch.utils import unique_file_name
 from pydantic import BaseModel
 
 import classifier.predict as class_pred
 import contact.sms_sender as sms_sender
 import transcribe.transcribeOffline as transcribeOffline
-#from backend.classifier.predict import predict_amb
+import classifier.predict_photo as class_pred_photo
+# from typing import Dict
+
 app = FastAPI()
+
+
 TEMP_UPLOAD_DIR = "temp_uploads"
+UPLOAD_DIR = "uploads"
+os.makedirs(TEMP_UPLOAD_DIR, exist_ok=True)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 #כשהמצב הוא לא פיתוח אז לעשות בקומנד
 #set ENVIRONMENT=production
@@ -44,6 +53,7 @@ print("ENVIRONMENT:", ENVIRONMENT)
 print("CORS origins:", origins)
 
 
+
 class RequestBody(BaseModel):
     history: list[str]
     ambulance_flag: Optional[bool] = False
@@ -56,7 +66,6 @@ class Location(BaseModel):
 @app.post('/predict')
 async def predict(request_body: RequestBody):
     try:
-
         print("Received predict request with body:", request_body)
 
         history = request_body.history
@@ -66,7 +75,6 @@ async def predict(request_body: RequestBody):
 
         latest_msg = history[-1]
         print("Latest message:", latest_msg)
-
         prediction = class_pred.predict_text(latest_msg)
         print("Prediction:", prediction)
 
@@ -81,10 +89,10 @@ async def predict(request_body: RequestBody):
                 ambulance_flag = False
                 label += " (awaiting image for severity assessment)"
             else:
-                if not request_body.ambulance_flag:
-                    ambulance_flag = class_pred.predict_amb(latest_msg)
-                else:
-                    ambulance_flag = request_body.ambulance_flag
+                ambulance_flag = (
+                    request_body.ambulance_flag or
+                    class_pred.predict_amb(latest_msg)
+                )
         else:
             ambulance_flag = False
 
@@ -187,6 +195,8 @@ async def receive_audio(audio: UploadFile = File(...)):
 
         # תמלול
         transcript = transcribeOffline.transcribe_audio(wav_path)
+        if not transcript.strip():
+            raise HTTPException(status_code=400, detail="Empty audio transcript. Please speak clearly.")
 
         # חיזוי לפי הטקסט
         prediction = class_pred.predict_text(transcript)
@@ -212,5 +222,75 @@ async def send_sms(location:Location):
         return {"status": "SMS sent successfully", "sid": sid}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to send SMS: {str(e)}")
+#
+# @app.post("/upload-image")
+# async def upload_image(image: UploadFile = File(...)):
+#     try:
+#         if not image.filename.lower().endswith((".jpg", ".jpeg", ".png")):
+#             raise HTTPException(status_code=400, detail="Unsupported image format.")
+#
+#         upload_dir = "uploads"
+#         os.makedirs(upload_dir, exist_ok=True)  # ודא שהתיקייה קיימת
+#
+#         unique_filename=f"{int(time.time())}_{image.filename}"
+#         file_location = os.path.join(upload_dir, unique_filename)
+#         with open(file_location, "wb") as buffer:
+#             shutil.copyfileobj(image.file, buffer)
+#         predicted_class_idx, confidence, uncertainty = class_pred_photo.predict_with_uncertainty(file_location)
+#
+#         burn_classes = {
+#             0: "First-degree burn",
+#             1: "Second-degree burn",
+#             2: "Third-degree burn"
+#         }
+#
+#         burn_label = burn_classes.get(predicted_class_idx, "Unknown")
+#         return {
+#             "status":"success",
+#             "filename": image.filename,
+#             "prediction": burn_label,
+#             "confidence": round(float(confidence), 4),
+#             "uncertainty_gap": round(float(uncertainty), 4)
+#         }
+#     except Exception as e:
+#         print(f"Error processing image: {e}")
+#         raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
+@app.post("/upload-image")
+async def upload_image(image: UploadFile = File(...)):
+    try:
+        if not image.filename.lower().endswith((".jpg", ".jpeg", ".png")):
+            raise HTTPException(status_code=400, detail="Unsupported image format.")
+
+        upload_dir = "uploads"
+        os.makedirs(upload_dir, exist_ok=True)  # ודא שהתיקייה קיימת
+
+        unique_filename = f"{int(time.time())}_{image.filename}"
+        file_location = os.path.join(upload_dir, unique_filename)
+        with open(file_location, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+
+        prediction = class_pred_photo.predict_multi_label(file_location, threshold=0.5)
+
+        class_names = {
+            0: "First-degree burn",
+            1: "Second-degree burn",
+            2: "Third-degree burn",
+        }
+
+        positive_classes_names = [class_names.get(idx, f"Class_{idx}") for idx in prediction["positive_classes"]]
+
+        return {
+            "status": "success",
+            "filename": image.filename,
+            "positive_classes_idx": prediction["positive_classes"],
+            "positive_classes_names": positive_classes_names,
+            "all_probabilities": [round(float(p), 4) for p in prediction["all_probabilities"]],
+            "uncertainty_gap": round(float(prediction["uncertainty_gap"]), 4)
+        }
+    except Exception as e:
+        print(f"Error processing image: {e}")
+        raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+
