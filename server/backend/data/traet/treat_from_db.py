@@ -1,7 +1,7 @@
 import sqlite3
 
 
-DB_PATH= "./treatments.db"
+DB_PATH=r"C:\Users\User\Documents\first_aid_app\server\backend\data\traet\treatments.db"
 
 def get_treatment_data(case_type, count, degree=None, db_path=DB_PATH):
     # מיפוי המספר לעמודה המתאימה
