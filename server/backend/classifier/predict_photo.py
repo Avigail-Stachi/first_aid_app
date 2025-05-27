@@ -20,13 +20,8 @@ def predict_multi_label(img_path, threshold=0.5):
     img_array = load_and_preprocess_image(img_path)
     predictions = model_photo.predict(img_array)[0]  # וקטור הסתברויות לכל הקלאסים
 
-    # רשימת אינדקסים של מחלקות שהסיכוי שלהם מעל סף (ככל הנראה קיימות בתמונה)
     positive_classes = [i for i, prob in enumerate(predictions) if prob >= threshold]
-
-    # הערכים המדויקים (הסתברויות) של כל המחלקות
     probabilities = predictions.tolist()
-
-    # נחשב אי-וודאות כפער בין ההסתברות הגבוהה ביותר לשנייה בגודלה, אם תרצי
     sorted_probs = np.sort(predictions)
     uncertainty_gap = float(sorted_probs[-1] - sorted_probs[-2]) if len(predictions) > 1 else 1.0
 
