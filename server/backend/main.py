@@ -4,7 +4,7 @@ import time
 import shutil
 
 from typing import Optional
-from fastapi import FastAPI, Request, HTTPException, File, UploadFile
+from fastapi import FastAPI, Request, HTTPException, File, UploadFile,Query
 from fastapi.middleware.cors import CORSMiddleware
 from pooch.utils import unique_file_name
 from pydantic import BaseModel
@@ -13,6 +13,7 @@ import classifier.predict as class_pred
 import contact.sms_sender as sms_sender
 import transcribe.transcribeOffline as transcribeOffline
 import classifier.predict_photo as class_pred_photo
+from data.traet.treat_from_db import get_treatment_data
 # from typing import Dict
 
 app = FastAPI()
@@ -110,67 +111,6 @@ async def predict(request_body: RequestBody):
 async def receive_location(location: Location):
     print("Received location:", location)
     return {"message": "Location received", "lat": location.lat, "lng": location.lng}
-
-# @app.post('/audio')
-# async def process_audio(audio: UploadFile = File(...)):
-#     print("iiiiiiiiiii")
-#     try:
-#         print(f"התקבל קובץ אודיו: {audio.filename}, סוג תוכן: {audio.content_type}")
-#
-#         # יצירת תיקייה זמנית אם היא לא קיימת
-#         if not os.path.exists(TEMP_UPLOAD_DIR):
-#             os.makedirs(TEMP_UPLOAD_DIR)
-#
-#         # יצירת שם קובץ ייחודי באמצעות חותמת זמן למניעת התנגשויות
-#         import time
-#         timestamp = int(time.time())
-#         original_filename = f"{timestamp}_{audio.filename or 'recording'}"
-#         original_path = os.path.join(TEMP_UPLOAD_DIR, original_filename)
-#
-#         print(f"שומר קובץ שהועלה אל: {original_path}")
-#
-#         # שמירת הקובץ שהועלה
-#         content = await audio.read()
-#         with open(original_path, "wb") as f:
-#             f.write(content)
-#
-#         print(f"הקובץ נשמר, גודל: {len(content)} בייטים")
-#
-#         # המרה לפורמט wav לצורך תמלול
-#         wav_path = os.path.splitext(original_path)[0] + ".wav"
-#         print(f"ממיר ל-WAV: {wav_path}")
-#
-#         transcribeOffline.convert_format(original_path, wav_path)
-#         print("ההמרה הושלמה, מתחיל תמלול")
-#
-#         transcript = transcribeOffline.transcribe_audio(wav_path)
-#         print(f"התמלול הושלם: {transcript}")
-#
-#         # קבלת תחזית מהתמליל
-#         prediction = class_pred.predict_text(transcript)
-#         print(f"תחזית: {prediction}")
-#
-#         # ניקוי קבצים זמניים
-#         try:
-#             if os.path.exists(original_path):
-#                 os.remove(original_path)
-#             if os.path.exists(wav_path):
-#                 os.remove(wav_path)
-#             print("קבצים זמניים הוסרו")
-#         except Exception as cleanup_error:
-#             print(f"שגיאה בהסרת קבצים זמניים: {cleanup_error}")
-#
-#         return {
-#             "transcript": transcript,
-#             "result": prediction
-#         }
-#
-#     except Exception as e:
-#         import traceback
-#         error_details = traceback.format_exc()
-#         print(f"שגיאה בעיבוד אודיו: {e}")
-#         print(error_details)
-#         raise HTTPException(status_code=500, detail=f"עיבוד האודיו נכשל: {str(e)}")
 
 @app.post("/audio")
 async def receive_audio(audio: UploadFile = File(...)):
@@ -290,6 +230,21 @@ async def upload_image(image: UploadFile = File(...)):
     except Exception as e:
         print(f"Error processing image: {e}")
         raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
+@app.get("/treatment")
+async def get_treatment(
+    case_type: str = Query(..., description="Type of emergency case"),
+    count: int = Query(..., ge=0, le=3, description="0=short, 1=detailed, 2=image, 3=video"),
+    degree: Optional[int] = Query(None, description="Severity degree (e.g., 1, 2, 3)")
+):
+    try:
+        result = get_treatment_data(case_type, count, degree)
+        if result is None:
+            raise HTTPException(status_code=404, detail="No treatment data found")
+        return {"result": result}
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
