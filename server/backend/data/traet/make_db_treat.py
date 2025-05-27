@@ -58,7 +58,6 @@ def populate_db(sources_json_path, treatments_json_path, path=DB_PATH):
                 VALUES (?, ?, ?, ?, ?, ?);
             ''', (s["case_type"], s.get("degree"), s["short_src"], s["detailed_src"], s["image_src"], s["video_src"]))
 
-        # בונים מיפוי id לפי case_type ו-degree כדי לקשר לטבלה treatments
     cur.execute("SELECT id, case_type, degree FROM sources;")
     id_map = {}
     for row in cur.fetchall():

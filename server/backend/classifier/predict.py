@@ -66,7 +66,7 @@ def predict_text(text: str):
     confidence_gap = predicted_confidence - second_max
 
 
-    # הדפסת אחוז של התחזית ומה הפער בין 2 הראשוניפ
+    #הדפסת אחוז של התחזית ומה הפער בין 2 הראשונים
     print(f"\nTop prediction: {predicted_class_name} ({predicted_confidence:.2%})")
     print(f"Confidence gap: {confidence_gap:.3f}")
 
