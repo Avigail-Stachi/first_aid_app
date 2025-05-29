@@ -11,7 +11,7 @@ import { ChatContext } from "../../context/ChatContext";
 
 const ChatPage = () => {
     const navigate = useNavigate();
-
+const [lastPrediction, setLastPrediction] = useState("");
   const {
     messages,
     setMessages,
@@ -34,7 +34,7 @@ const ChatPage = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLocation = useCallback((coords) => {
-    const { lat, lng } = coords;
+    const { lat, lng} = coords;
     setMessages((prev) => [
       ...prev,
       { text: "I found this location on Google Maps:", fromUser: false },
@@ -45,13 +45,18 @@ const ChatPage = () => {
       },
       { text: "Is this correct?", fromUser: false },
     ]);
-    fetch(`${process.env.REACT_APP_API_URL}/location`, {
+    fetch(`${process.env.REACT_APP_API_URL}/send_sms`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(coords),
+    body: JSON.stringify({
+      coords: { lat, lng },
+      history: history,
+      prediction: lastPrediction || "No diagnosis provided.",
+      message: "First-aid emergency reported."
+    }),
     }).catch(console.error);
     setLocationSent(true);
-  }, [setMessages, setLocationSent]);
+  }, [setMessages, setLocationSent,history,lastPrediction]);
 
   const sendRequest = async () => {
     if (!inputMsg.trim() || isFinalDecision) return;
@@ -85,7 +90,7 @@ const ChatPage = () => {
       setAmbulance_flag(data.ambulance_flag);
       setIsFinalDecision(data.has_decision);
       setInputMsg("");
-
+      setLastPrediction(data.result);
       if (data.has_decision) {
         setTreatmentParams({
           caseType: data.result,
