@@ -58,11 +58,15 @@ print("CORS origins:", origins)
 class RequestBody(BaseModel):
     history: list[str]
     ambulance_flag: Optional[bool] = False
-class Location(BaseModel):
+
+class Coords(BaseModel):
     lat: float
     lng: float
+class Location(BaseModel):
+    coords: Coords
+    history: Optional[list[str]] = []
+    prediction: Optional[str] = "No diagnosis provided."
     message: Optional[str] = "First-aid emergency reported."
-    diagnosis: Optional[str] = "No diagnosis provided."
 
 
 @app.post('/predict')
@@ -158,12 +162,34 @@ async def receive_audio(audio: UploadFile = File(...)):
 
 @app.post("/send_sms")
 async def send_sms(location:Location):
-    try:
-        sid = sms_sender.send_emergency_sms(location.lat, location.lng, location.message, location.diagnosis)
-        return {"status": "SMS sent successfully", "sid": sid}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to send SMS: {str(e)}")
-#
+
+    lat = location.coords.lat
+    lng = location.coords.lng
+    message = location.message or "First-aid emergency reported."
+    diagnosis = location.prediction or "No diagnosis provided."
+    result = sms_sender.send_emergency_sms(lat, lng, message, diagnosis)
+
+    if result["status"] == "success":
+        return {
+                "status": "success",
+                "message": result["message"],
+                "sid": result["sid"],
+                "sent_message": result["sent_message"]
+            }
+    elif result["status"] == "dev_mode":
+        return {
+                "status": "dev_mode",
+                "message": result["message"],
+                "sent_message": result["sent_message"]
+            }
+    else:  # failure
+        return {
+                "status": "failure",
+                "error": result["error"],
+                "suggestion": result["suggestion"],
+                "manual_message": result["manual_message"],
+                "technical_details": result["technical_details"]
+            }
 # @app.post("/upload-image")
 # async def upload_image(image: UploadFile = File(...)):
 #     try:
