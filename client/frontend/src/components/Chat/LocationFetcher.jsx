@@ -1,5 +1,5 @@
 import { useEffect,useRef,useState } from "react";
-import "../styles/LocationFetcher.css";
+import "../../styles/LocationFetcher.css";
 function LocationFetcher({ onLocation }) {
   const calledRef = useRef(false);
   const [manualLat, setManualLat] = useState("");

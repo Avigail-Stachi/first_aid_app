@@ -3,9 +3,9 @@ import { useNavigate } from "react-router-dom";
 import ChatWindow from "./ChatWindow";
 import MessageInput from "./MessageInput";
 import VoiceRecorder from "./VoiceRecorder";
-import LocationFetcher from "../LocationFetcher";
+import LocationFetcher from "./LocationFetcher";
 import ImageCapture from "../ImageCapture";
-import ChatActions from "../ChatActions";
+import ChatActions from "./ChatActions";
 import { ChatContext } from "../../context/ChatContext";
 
 
