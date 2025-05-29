@@ -1,20 +1,18 @@
-
-
-import React, { useEffect, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-
+import React, { useContext, useEffect, useState } from "react";
+import { useSearchParams} from "react-router-dom";
+import { ChatContext } from "../context/ChatContext";
 export default function TreatmentScreen() {
+  const {newChat}=useContext(ChatContext);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
 
   const caseType = searchParams.get("case_type");
   const degree = searchParams.get("degree");
   const initialCount = parseInt(searchParams.get("count"), 10) || 0;
   const [count, setCount] = useState(initialCount);
 
-  // Fetch whenever caseType, count, or degree changes
   useEffect(() => {
     if (!caseType) return;
     const fetchTreatment = async () => {
@@ -53,7 +51,14 @@ export default function TreatmentScreen() {
     <div style={{ maxWidth: "600px", margin: "0 auto", padding: "2rem" }}>
       <h2>Treatment Instructions</h2>
       {error && <p style={{ color: "red" }}>{error}</p>}
-      {!error && !data && <p>Loading...</p>}
+      {!error && !caseType && (
+        <p style={{ color: "gray" }}>
+          We cannot provide treatment instructions because no diagnosis was
+          made. Please return to the chat and describe the emergency.
+        </p>
+      )}
+
+      {!error && caseType && !data && <p>Loading treatment instructions...</p>}
       {data && typeof data === "string" && <p>{data}</p>}
       {data && data.type === "image" && (
         <img
@@ -70,13 +75,11 @@ export default function TreatmentScreen() {
       )}
 
       <div style={{ marginTop: "1.5rem" }}>
-        <button onClick={() => navigate(-1)} style={{ marginRight: "1rem" }}>
+        <button onClick={newChat} style={{ marginRight: "1rem" }}>
           Start New Chat
         </button>
         {count < 3 && (
-          <button onClick={handleDidntUnderstand}>
-           I didn't understand
-          </button>
+          <button onClick={handleDidntUnderstand}>I didn't understand</button>
         )}
       </div>
     </div>

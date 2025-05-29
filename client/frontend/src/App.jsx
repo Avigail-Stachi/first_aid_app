@@ -382,277 +382,29 @@
 //   );
 // }
 
-import React, { useState, useCallback } from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
+import React, { useState,useContext } from "react";
+import { Routes, Route } from "react-router-dom";
 import HomeScreen from "./components/HomeScreen";
-import ChatWindow from "./components/ChatWindow";
-import MessageInput from "./components/MessageInput";
-import VoiceRecorder from "./components/VoiceRecorder";
-import LocationFetcher from "./components/LocationFetcher";
-import ImageCapture from "./components/ImageCapture";
+import ChatPage from "./components/Chat/ChatPage";
 import TreatmentScreen from "./components/TreatmentScreen";
+import { ChatContext } from "./context/ChatContext";
 import "./App.css";
-
+//import { useNavigate } from "react-router-dom";
 export default function App() {
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
+  const {newChat}= useContext(ChatContext);
 
-  const [showChat, setShowChat] = useState(false);
-  const [treatmentParams, setTreatmentParams] = useState(null);
-  const [inputMsg, setInputMsg] = useState("");
-  const [messages, setMessages] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [ambulance_flag, setAmbulance_flag] = useState(false);
-  const [isFinalDecision, setIsFinalDecision] = useState(false);
-  const [locationSent, setLocationSent] = useState(false);
-  const [showImageCapture, setShowImageCapture] = useState(false);
 
-  const handleLocation = useCallback((coords) => {
-    const { lat, lng } = coords;
-    setMessages((prev) => [
-      ...prev,
-      { text: "I found this location on Google Maps:", fromUser: false },
-      {
-        text: `https://maps.google.com/?q=${lat},${lng}`,
-        fromUser: false,
-        isLink: true,
-      },
-      { text: "Is this correct?", fromUser: false },
-    ]);
-    fetch(`${process.env.REACT_APP_API_URL}/location`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(coords),
-    }).catch(console.error);
-    setLocationSent(true);
-  }, []);
-
-  const sendRequest = async () => {
-    if (!inputMsg.trim() || isFinalDecision) return;
-    setMessages((prev) => [...prev, { text: inputMsg, fromUser: true }]);
-    const newHistory = [...history, inputMsg];
-    setHistory(newHistory);
-    setIsLoading(true);
-
-    try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/predict`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ history: newHistory, ambulance_flag }),
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-
-      setMessages((prev) => [
-        ...prev,
-        { text: data.result, fromUser: false },
-        ...(data.ambulance_flag
-          ? [
-              {
-                text: "Ambulance required!",
-                fromUser: false,
-                isAmbulanceAlert: true,
-              },
-            ]
-          : []),
-      ]);
-      setAmbulance_flag(data.ambulance_flag);
-      setIsFinalDecision(data.has_decision);
-      setInputMsg("");
-
-      if (data.has_decision) {
-        setTreatmentParams({
-          caseType: data.result,
-          degree: data.degree ?? undefined,
-        });
-      }
-      if (data.request_image) {
-        setShowImageCapture(true);
-      }
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        { text: "Error contacting server", fromUser: false },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const newChat = () => {
-    setMessages([]);
-    setHistory([]);
-    setInputMsg("");
-    setAmbulance_flag(false);
-    setIsFinalDecision(false);
-    setLocationSent(false);
-    setShowImageCapture(false);
-    setTreatmentParams(null);
-  };
-
-  const handleSendAudio = async (blob) => {
-    console.log("Audio MIME type:", blob.type);
-    console.log("Audio size:", blob.size, "bytes");
-
-    const url = URL.createObjectURL(blob);
-    const audioMessage = { audioUrl: url, fromUser: true };
-    setMessages((prev) => [...prev, audioMessage]);
-    // setHistory((prev) => [...prev, transcript]);
-
-    const formData = new FormData();
-    formData.append("audio", blob, "recording.webm"); // Give a filename with extension
-
-    try {
-      setIsLoading(true);
-      console.log(
-        "Sending audio to:",
-        `${process.env.REACT_APP_API_URL}/audio`
-      );
-
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/audio`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Server response:", res.status, errorText);
-        throw new Error(`Server error: ${res.status} ${errorText}`);
-      }
-
-      const data = await res.json();
-      console.log("Server response data:", data);
-
-      const transcript = data?.transcript || "";
-      const initialAnswer = data?.result || "";
-      console.log("Transcript:", transcript);
-      console.log("Initial answer:", initialAnswer);
-
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.audioUrl === url ? { ...msg, transcript: transcript } : msg
-        )
-      );
-      // setMessages((prev) => [
-      //   ...prev,
-      //   { text: initialAnswer, fromUser: false },
-      // ]);
-      // setHistory((prev) => [...prev, initialAnswer]);
-
-      // Send history including the transcript in a separate query
-      const newHistory = [...history, transcript];
-      const predictRes = await fetch(
-        `${process.env.REACT_APP_API_URL}/predict`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            history: newHistory,
-            ambulance_flag: ambulance_flag,
-          }),
-        }
-      );
-
-      if (!predictRes.ok) {
-        const errorText = await predictRes.text();
-        console.error("Predict response:", predictRes.status, errorText);
-        throw new Error(
-          `Server error on predict: ${predictRes.status} ${errorText}`
-        );
-      }
-
-      const predictData = await predictRes.json();
-      const finalAnswer = predictData?.result || "Error: No result received";
-      const finalDecisionFlag = predictData?.has_decision || false;
-      const ambulanceFlag = predictData?.ambulance_flag || false;
-      setMessages((prev) => [
-        ...prev,
-        { text: finalAnswer, fromUser: false },
-        ...(ambulanceFlag
-          ? [
-              {
-                text: "Ambulance required!",
-                fromUser: false,
-                isAmbulanceAlert: true,
-              },
-            ]
-          : []),
-      ]);
-
-      setHistory(newHistory);
-      setAmbulance_flag(ambulanceFlag);
-      setIsFinalDecision(finalDecisionFlag);
-    } catch (error) {
-      console.error("Error in handleSendAudio:", error);
-      setMessages((prev) => [
-        ...prev,
-        { text: `Error contacting server: ${error.message}`, fromUser: false },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (!showChat) {
-    return <HomeScreen onStartChat={() => setShowChat(true)} />;
-  }
-
-  const ChatPage = (
-    <div style={{ maxWidth: 600, margin: "0 auto", padding: "2rem" }}>
-      <h1>ResQPal Chat</h1>
-      <ChatWindow messages={messages} />
-      <MessageInput
-        inputMsg={inputMsg}
-        setInputMsg={setInputMsg}
-        onSend={sendRequest}
-        disabled={isLoading || isFinalDecision}
-      />
-      {!isFinalDecision && <VoiceRecorder onSendAudio={handleSendAudio} />}
-      {ambulance_flag && isFinalDecision && !locationSent && (
-        <LocationFetcher onLocation={handleLocation} />
-      )}
-      {showImageCapture && (
-        <ImageCapture
-          onCancel={() => setShowImageCapture(false)}
-          onCapture={(result) => {
-            setMessages((prev) => [
-              ...prev,
-              { text: `Image result: ${result}`, fromUser: false },
-            ]);
-            setShowImageCapture(false);
-          }}
-        />
-      )}
-      <button onClick={newChat} style={{ marginTop: "1rem" }}>
-        Start New Chat
-      </button>
-      <button
-        onClick={() => {
-          if (!treatmentParams) return;
-          let url = `/treatment?case_type=${encodeURIComponent(
-            treatmentParams.caseType
-          )}&count=0`;
-          if (treatmentParams.degree)
-            url += `&degree=${treatmentParams.degree}`;
-          navigate(url);
-        }}
-        disabled={!treatmentParams}
-        style={{
-          marginLeft: "1rem",
-          marginTop: "1rem",
-          opacity: treatmentParams ? 1 : 0.5,
-          cursor: treatmentParams ? "pointer" : "not-allowed",
-        }}
-      >
-        What to do?
-      </button>
-    </div>
-  );
 
   return (
     <Routes>
-      <Route path="/" element={ChatPage} />
-      <Route path="/treatment" element={<TreatmentScreen />} />
+      <Route path="/" element={<HomeScreen />} />
+<Route path="/chat" element={<ChatPage />} />
+
+      <Route
+        path="/treatment"
+        element={<TreatmentScreen newChat={newChat} />}
+      />
     </Routes>
   );
 }

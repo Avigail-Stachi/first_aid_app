@@ -2,8 +2,7 @@
 //לשלוח לשרת כשנלחץ שלח או אנטר
 
 import React from "react";
-
-import "../styles/MessageInput.css";
+import "../../styles/MessageInput.css";
 
 function MessageInput(props) {
   const { inputMsg, setInputMsg, onSend, disabled } = props;

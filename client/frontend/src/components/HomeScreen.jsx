@@ -1,7 +1,10 @@
 import React from "react";
 import logo from "../assets/logo.png";
+import { useNavigate } from "react-router-dom";
 
 function HomeScreen({ onStartChat }) {
+  const navigate = useNavigate();
+
   return (
     <div
       style={{
@@ -22,7 +25,7 @@ function HomeScreen({ onStartChat }) {
         style={{ width: "300px", marginBottom: "2.5rem" }} // לוגו גדול יותר ורווח גדול מתחתיו
       />
       <button
-        onClick={onStartChat}
+       onClick={() => navigate("/chat")}
         style={{
           padding: "1rem 2rem",
           fontSize: "1.4rem",
