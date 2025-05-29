@@ -1,4 +1,4 @@
-import React, { useState, useCallback,useContext } from "react";
+import React, { useState, useCallback, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import ChatWindow from "./ChatWindow";
 import MessageInput from "./MessageInput";
@@ -8,10 +8,9 @@ import ImageCapture from "../ImageCapture";
 import ChatActions from "./ChatActions";
 import { ChatContext } from "../../context/ChatContext";
 
-
 const ChatPage = () => {
-    const navigate = useNavigate();
-const [lastPrediction, setLastPrediction] = useState("");
+  const navigate = useNavigate();
+  const [lastPrediction, setLastPrediction] = useState("");
   const {
     messages,
     setMessages,
@@ -33,31 +32,56 @@ const [lastPrediction, setLastPrediction] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLocation = useCallback((coords) => {
-    const { lat, lng} = coords;
-    setMessages((prev) => [
-      ...prev,
-      { text: "I found this location on Google Maps:", fromUser: false },
-      {
-        text: `https://maps.google.com/?q=${lat},${lng}`,
-        fromUser: false,
-        isLink: true,
-      },
-      { text: "Is this correct?", fromUser: false },
-    ]);
-    fetch(`${process.env.REACT_APP_API_URL}/send_sms`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      coords: { lat, lng },
-      history: history,
-      prediction: lastPrediction || "No diagnosis provided.",
-      message: "First-aid emergency reported."
-    }),
-    }).catch(console.error);
-    setLocationSent(true);
-  }, [setMessages, setLocationSent,history,lastPrediction]);
-
+  const handleLocation = useCallback(
+    async ({ lat, lng, address }) => {
+      // setMessages((prev) => [
+      //   ...prev,
+      //   { text: "I found this location on Google Maps:", fromUser: false },
+      //   {
+      //     text: `https://maps.google.com/?q=${lat},${lng}`,
+      //     fromUser: false,
+      //     isLink: true,
+      //   },
+      //   { text: "Is this correct?", fromUser: false },
+      // ]);
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/send_sms`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            coords: { lat, lng },
+            history: history,
+            prediction: lastPrediction || "No diagnosis provided.",
+            message: "First-aid emergency reported.",
+          }),
+        });
+        const data = await res.json();
+        setMessages((prev) => [
+          ...prev,
+          {
+            text: `Location sent: ${
+              address || `(${lat.toFixed(5)}, ${lng.toFixed(5)})`
+            }`,
+            fromUser: false,
+          },
+          {
+            text:
+              data.message ||
+              "SMS sent to MDA with your location and our conversation",
+            fromUser: false,
+          },
+        ]);
+        setLocationSent(true);
+      } catch (error) {
+        setMessages((prev) => [
+          ...prev,
+          { text: `Error sending SMS: ${error.message}`, fromUser: false },
+        ]);
+        console.error("Error sending SMS:", error);
+      }
+    },
+    [setMessages, setLocationSent, history, lastPrediction]
+  );
   const sendRequest = async () => {
     if (!inputMsg.trim() || isFinalDecision) return;
     setMessages((prev) => [...prev, { text: inputMsg, fromUser: true }]);
