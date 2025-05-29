@@ -14,12 +14,17 @@ ENV= os.getenv("APP_ENV", "development")  # ברירת מחדל: פיתוח
 
 client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
-def send_emergency_sms(lat: float, lng: float) -> str:
-    message_body = f"Emergency alert received! Location: https://maps.google.com/?q={lat},{lng}"
+def send_emergency_sms(lat: float, lng: float, user_message: str, diagnosis: str) -> str:
+    message_body = (
+        f"Emergency alert received!\n"
+        f"Location: https://maps.google.com/?q={lat},{lng}\n"
+        f"User message: {user_message}\n"
+        f"App diagnosis: {diagnosis}"
+    )
 
     if ENV != "production":
-        print(f"[{ENV.upper()} MODE] מיקום אותר: {message_body}")
-        return f"{message_body} (לא נשלח כי זה מצב {ENV})"
+        print(f"[{ENV.upper()} MODE] SMS content (not sent):\n{message_body}")
+        return f"{message_body} (not sent due to {ENV} mode)"
 
     message = client.messages.create(
         body=message_body,
@@ -27,3 +32,4 @@ def send_emergency_sms(lat: float, lng: float) -> str:
         to=MEDA_PHONE_NUMBER
     )
     return message.sid
+

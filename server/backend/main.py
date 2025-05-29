@@ -62,6 +62,7 @@ class Location(BaseModel):
     lat: float
     lng: float
     message: Optional[str] = "First-aid emergency reported."
+    diagnosis: Optional[str] = "No diagnosis provided."
 
 
 @app.post('/predict')
@@ -158,7 +159,7 @@ async def receive_audio(audio: UploadFile = File(...)):
 @app.post("/send_sms")
 async def send_sms(location:Location):
     try:
-        sid=sms_sender(location.lat, location.lng,location.message)
+        sid = sms_sender.send_emergency_sms(location.lat, location.lng, location.message, location.diagnosis)
         return {"status": "SMS sent successfully", "sid": sid}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to send SMS: {str(e)}")
