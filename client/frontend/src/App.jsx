@@ -1,18 +1,3 @@
-// import React, { useState, useCallback } from "react";
-// //import { FaTrash } from 'react-icons/fa';
-// import { useNavigate, Routes, Route } from "react-router-dom";
-
-// import TreatmentScreen from "./components/TreatmentScreen";
-
-// import HomeScreen from "./components/HomeScreen";
-// import ChatWindow from "./components/ChatWindow";
-// import MessageInput from "./components/MessageInput";
-// import VoiceRecorder from "./components/VoiceRecorder";
-// import LocationFetcher from "./components/LocationFetcher";
-// import ImageCapture from "./components/ImageCapture";
-// // import Instructions from "./components/Instructions";
-// //import Modal from "./components/Modal";
-// import "./App.css";
 
 // function App() {
 //   const navigate = useNavigate();
