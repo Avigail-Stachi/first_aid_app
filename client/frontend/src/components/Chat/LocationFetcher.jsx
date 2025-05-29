@@ -10,7 +10,7 @@ function LocationFetcher({ onLocation }) {
   const [error, setError] = useState(null);
 
   async function getAddressFromCoords(lat, lng) {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=en`;
     try {
       const res = await fetch(url, {
         headers: {

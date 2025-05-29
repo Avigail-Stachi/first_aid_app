@@ -50,11 +50,19 @@ const ChatPage = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             coords: { lat, lng },
-            history: history,
+            //history: history,
             prediction: lastPrediction || "No diagnosis provided.",
-            message: "First-aid emergency reported.",
+            message:history.join(" ") || "First-aid emergency reported.",
           }),
         });
+        if (!res.ok) {
+          const errorText = await res.text();
+          setMessages((prev) => [
+            ...prev,
+            { text: `Error sending SMS: ${errorText}`, fromUser: false },
+          ]);
+          return;
+        }
         const data = await res.json();
         setMessages((prev) => [
           ...prev,
