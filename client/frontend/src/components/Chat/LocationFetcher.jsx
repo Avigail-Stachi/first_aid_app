@@ -8,7 +8,7 @@ function LocationFetcher({ onLocation }) {
   const [manualLat, setManualLat] = useState("");
   const [manualLng, setManualLng] = useState("");
   const [error, setError] = useState(null);
-
+const [confiemed, setConfiemed] = useState(false);
   async function getAddressFromCoords(lat, lng) {
     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=en`;
     try {
@@ -58,6 +58,7 @@ function LocationFetcher({ onLocation }) {
   const handleConfirm = () => {
     if (location) {
       onLocation(location);
+      setConfiemed(true);
     }
   };
   const handleChange = () => {
@@ -88,7 +89,11 @@ function LocationFetcher({ onLocation }) {
     setManualLng("");
     setShowManualForm(false);
     setError(null);
+    setConfiemed(true);
   };
+  if (confiemed) {
+    return null;
+  }
   return (
     <div className="location-fetcher-container">
       {error && <p className="error-message">{error}</p>}
