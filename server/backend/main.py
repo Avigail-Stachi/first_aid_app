@@ -183,13 +183,13 @@ async def send_sms(location:Location):
                 "sent_message": result["sent_message"]
             }
     else:  # failure
-        return {
-                "status": "failure",
-                "error": result["error"],
-                "suggestion": result["suggestion"],
-                "manual_message": result["manual_message"],
-                "technical_details": result["technical_details"]
-            }
+        raise HTTPException(status_code=500, detail={
+            "status": "failure",
+            "error": result["error"],
+            "suggestion": result["suggestion"],
+            "manual_message": result["manual_message"],
+            "technical_details": result["technical_details"]
+        })
 # @app.post("/upload-image")
 # async def upload_image(image: UploadFile = File(...)):
 #     try:
