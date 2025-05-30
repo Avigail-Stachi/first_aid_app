@@ -52,38 +52,89 @@ const ChatPage = () => {
             coords: { lat, lng },
             //history: history,
             prediction: lastPrediction || "No diagnosis provided.",
-            message:history.join(" ") || "First-aid emergency reported.",
+            message: history.join(" ") || "First-aid emergency reported.",
           }),
         });
         if (!res.ok) {
-          const errorText = await res.text();
+          let errorText;
+          try {
+            const errorJson = await res.json();
+            errorText = JSON.stringify(errorJson.detail || errorJson);
+          } catch {
+            errorText = await res.text();
+          }
           setMessages((prev) => [
             ...prev,
             { text: `Error sending SMS: ${errorText}`, fromUser: false },
           ]);
           return;
         }
+
         const data = await res.json();
-        setMessages((prev) => [
-          ...prev,
-          {
-            text: `Location sent: ${
-              address || `(${lat.toFixed(5)}, ${lng.toFixed(5)})`
-            }`,
-            fromUser: false,
-          },
-          {
-            text:
-              data.message ||
-              "SMS sent to MDA with your location and our conversation",
-            fromUser: false,
-          },
-        ]);
-        setLocationSent(true);
+        console.log("SMS response:", data);
+
+        if (data.sid.status === "dev_mode") {
+          setMessages((prev) => [
+            ...prev,
+            {
+              text: `⚠️ Development mode: SMS was NOT sent.`,
+              fromUser: false,
+            },
+            {
+              text: `Message content:\n${data.sid.sent_message}`,
+              fromUser: false,
+            },
+          ]);
+        } else if (data.sid.status === "failure") {
+          setMessages((prev) => [
+            ...prev,
+            {
+              text: `❌ SMS not sent due to error: ${data.error}`,
+              fromUser: false,
+            },
+            {
+              text: `Please manually send the following message to MDA:\n${data.manual_message}`,
+              fromUser: false,
+            },
+            {
+              text: `Suggestion: ${data.suggestion}`,
+              fromUser: false,
+            },
+          ]);
+        } else if (data.sid.status === "success") {
+          setMessages((prev) => [
+            ...prev,
+            {
+              text: `Location sent: ${
+                address || `(${lat.toFixed(5)}, ${lng.toFixed(5)})`
+              }`,
+              fromUser: false,
+            },
+            {
+              text:
+                data.message ||
+                "SMS sent to MDA with your location and details.",
+              fromUser: false,
+            },
+          ]);
+          setLocationSent(true);
+        } else {
+          // fallback: show generic message
+          setMessages((prev) => [
+            ...prev,
+            {
+              text: data.message || "Unknown response from server.",
+              fromUser: false,
+            },
+          ]);
+        }
       } catch (error) {
         setMessages((prev) => [
           ...prev,
-          { text: `Error sending SMS: ${error.message}`, fromUser: false },
+          {
+            text: `❌ Error sending SMS: ${error.message}. Please send location and info to MDA manually.`,
+            fromUser: false,
+          },
         ]);
         console.error("Error sending SMS:", error);
       }
