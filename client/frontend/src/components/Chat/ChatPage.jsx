@@ -77,7 +77,7 @@ const ChatPage = () => {
           setMessages((prev) => [
             ...prev,
             {
-              text: `⚠️ Development mode: SMS was NOT sent.`,
+              text: `Development mode: SMS was NOT sent.`,
               fromUser: false,
             },
             {
@@ -89,7 +89,7 @@ const ChatPage = () => {
           setMessages((prev) => [
             ...prev,
             {
-              text: `❌ SMS not sent due to error: ${data.error}`,
+              text: `SMS not sent due to error: ${data.error}`,
               fromUser: false,
             },
             {
@@ -297,7 +297,8 @@ const ChatPage = () => {
       />
       {!isFinalDecision && <VoiceRecorder onSendAudio={handleSendAudio} />}
       {ambulance_flag && isFinalDecision && !locationSent && (
-        <LocationFetcher onLocation={handleLocation} />
+        <LocationFetcher onLocation={handleLocation} 
+        />
       )}
       {showImageCapture && (
         <ImageCapture
