@@ -7,7 +7,7 @@ import LocationFetcher from "./LocationFetcher";
 import ImageCapture from "../ImageCapture";
 import ChatActions from "./ChatActions";
 import { ChatContext } from "../../context/ChatContext";
-
+import { speakText } from "../speach";
 const ChatPage = () => {
   const navigate = useNavigate();
   const [lastPrediction, setLastPrediction] = useState("");
