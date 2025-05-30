@@ -7,7 +7,7 @@ export default function TreatmentScreen() {
   const [error, setError] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   //const navigate = useNavigate();
-
+//לבדוק
   const caseType = searchParams.get("case_type");
   const degree = searchParams.get("degree");
   const initialCount = parseInt(searchParams.get("count"), 10) || 0;
