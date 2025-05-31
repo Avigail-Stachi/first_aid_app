@@ -1,5 +1,5 @@
 import React from "react";
-
+import { speakText } from "../speech";
 const ChatWindow = ({ messages }) => {
   return (
     <div
@@ -40,42 +40,55 @@ const ChatWindow = ({ messages }) => {
               🚨 Emergency! Ambulance needed
             </div>
           )}
-          {msg.text &&
-            (msg.isLink ? (
-              <a
-                href={msg.text}
-                target="_blank"
-                rel="noopener noreferrer"
+            {msg.text && (
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                backgroundColor: msg.fromUser ? "#DCF8C6" : "#EAEAEA",
+                color: "#333",
+                padding: "8px 12px",
+                borderRadius: "15px",
+                maxWidth: "80%",
+                wordWrap: "break-word",
+                margin: 0,
+              }}
+            >
+              {msg.isLink ? (
+                <a
+                  href={msg.text}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: "#1a0dab",
+                    textDecoration: "underline",
+                    marginRight: "8px",
+                  }}
+                >
+                  {msg.text}
+                </a>
+              ) : (
+                <span style={{ marginRight: "8px" }}>{msg.text}</span>
+              )}
+
+              {/* כפתור רמקול להקראת הטקסט */}
+              <button
+                onClick={() => speakText(msg.text)}
                 style={{
-                  display: "inline-block",
-                  backgroundColor: msg.fromUser ? "#DCF8C6" : "#EAEAEA",
-                  color: "#1a0dab",
-                  padding: "8px 12px",
-                  borderRadius: "15px",
-                  maxWidth: "80%",
-                  wordWrap: "break-word",
-                  textDecoration: "underline",
-                  margin: 0,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "18px",
+                  color: "#555",
                 }}
+                aria-label="Speak message"
+                title="הקש להקראת ההודעה"
               >
-                {msg.text}
-              </a>
-            ) : (
-              <p
-                style={{
-                  display: "inline-block",
-                  backgroundColor: msg.fromUser ? "#DCF8C6" : "#EAEAEA",
-                  color: "#333",
-                  padding: "8px 12px",
-                  borderRadius: "15px",
-                  maxWidth: "80%",
-                  wordWrap: "break-word",
-                  margin: 0,
-                }}
-              >
-                {msg.text}
-              </p>
-            ))}
+                🔊
+              </button>
+            </div>
+          )}
+
           {msg.audioUrl && (
             <audio
               controls
