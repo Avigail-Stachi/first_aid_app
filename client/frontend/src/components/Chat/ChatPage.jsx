@@ -7,7 +7,7 @@ import LocationFetcher from "./LocationFetcher";
 import ImageCapture from "../ImageCapture";
 import ChatActions from "./ChatActions";
 import { ChatContext } from "../../context/ChatContext";
-import { speakText } from "../speach";
+// import { speakText } from "../speech";
 const ChatPage = () => {
   const navigate = useNavigate();
   const [lastPrediction, setLastPrediction] = useState("");
@@ -73,7 +73,7 @@ const ChatPage = () => {
         const data = await res.json();
         console.log("SMS response:", data);
 
-        if (data.sid.status === "dev_mode") {
+        if (data.status === "dev_mode") {
           setMessages((prev) => [
             ...prev,
             {
@@ -81,11 +81,11 @@ const ChatPage = () => {
               fromUser: false,
             },
             {
-              text: `Message content:\n${data.sid.sent_message}`,
+              text: `Message content:\n${data.sent_message}`,
               fromUser: false,
             },
           ]);
-        } else if (data.sid.status === "failure") {
+        } else if (data.status === "failure") {
           setMessages((prev) => [
             ...prev,
             {
@@ -101,7 +101,7 @@ const ChatPage = () => {
               fromUser: false,
             },
           ]);
-        } else if (data.sid.status === "success") {
+        } else if (data.status === "success") {
           setMessages((prev) => [
             ...prev,
             {
@@ -170,6 +170,7 @@ const ChatPage = () => {
             ]
           : []),
       ]);
+      //speakText(data.result);
       setAmbulance_flag(data.ambulance_flag);
       setIsFinalDecision(data.has_decision);
       setInputMsg("");
@@ -260,6 +261,7 @@ const ChatPage = () => {
             ]
           : []),
       ]);
+      //speakText(finalAnswer);
 
       setHistory(newHistory);
       setAmbulance_flag(ambulanceFlag);
@@ -297,8 +299,7 @@ const ChatPage = () => {
       />
       {!isFinalDecision && <VoiceRecorder onSendAudio={handleSendAudio} />}
       {ambulance_flag && isFinalDecision && !locationSent && (
-        <LocationFetcher onLocation={handleLocation} 
-        />
+        <LocationFetcher onLocation={handleLocation} />
       )}
       {showImageCapture && (
         <ImageCapture
