@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import { useSearchParams} from "react-router-dom";
 import { ChatContext } from "../context/ChatContext";
+import { speakText } from "./speech";
 export default function TreatmentScreen() {
   const {newChat}=useContext(ChatContext);
   const [data, setData] = useState(null);
@@ -58,7 +59,25 @@ export default function TreatmentScreen() {
       )}
 
       {!error && caseType && !data && <p>Loading treatment instructions...</p>}
-      {data && typeof data === "string" && <p>{data}</p>}
+{data && typeof data === "string" && (
+  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+    <p style={{ flex: 1 }}>{data}</p>
+    {(count === 0 || count === 1) && (
+      <button
+        onClick={() => speakText(data)}
+        title="Read aloud"
+        style={{
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          fontSize: "1.2rem"
+        }}
+      >
+        🔊
+      </button>
+    )}
+  </div>
+)}
       {data && data.type === "image" && (
         <img
           src={data.url}
