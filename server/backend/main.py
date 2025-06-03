@@ -243,9 +243,9 @@ async def upload_image(image: UploadFile = File(...)):
             1: "Second-degree burn",
             2: "Third-degree burn",
         }
-        positive_classes_idx = prediction_result["positive_classes"]
+        positive_classes_idx = prediction["positive_classes"]
         positive_classes_names = [class_names.get(idx, f"Class_{idx}") for idx in positive_classes_idx]
-        uncertainty_gap = prediction_result["uncertainty_gap"]
+        uncertainty_gap = prediction["uncertainty_gap"]
 
         warning = None
         has_decision_after_image = False
@@ -272,7 +272,7 @@ async def upload_image(image: UploadFile = File(...)):
             "filename": image.filename,
             "positive_classes_idx": positive_classes_idx,  # האינדקסים (0,1,2)
             "positive_classes_names": positive_classes_names,  # שמות הדרגות (First-degree burn)
-            "all_probabilities": [round(float(p), 4) for p in prediction_result["all_probabilities"]],
+            "all_probabilities": [round(float(p), 4) for p in prediction["all_probabilities"]],
             "uncertainty_gap": round(float(uncertainty_gap), 4),
             "warning": warning,
             "result": result_for_frontend,  # התשובה הסופית של המודל (מה יופיע בצ'אט ומה ייכנס ל-treatmentParams)
