@@ -92,6 +92,7 @@ const ImageUploader = ({ onImageSend }) => {
         method: "POST",
         body: formData,
       });
+      //cc
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Image upload error:", errorText);
