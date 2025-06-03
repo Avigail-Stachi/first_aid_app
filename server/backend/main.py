@@ -245,6 +245,13 @@ async def upload_image(image: UploadFile = File(...)):
         }
 #v
         positive_classes_names = [class_names.get(idx, f"Class_{idx}") for idx in prediction["positive_classes"]]
+        warning = None
+        if len(prediction["positive_classes"]) == 0:
+            warning = "⚠️ No burn detected with sufficient confidence."
+        elif len(prediction["positive_classes"]) == 1 and prediction["uncertainty_gap"] < 0.05:
+            warning = "⚠️ Low confidence in classification. Try another angle or lighting."
+        elif len(prediction["positive_classes"]) > 1:
+            warning = "⚠️ Multiple burn types detected."
 
         return {
             "status": "success",
@@ -252,8 +259,17 @@ async def upload_image(image: UploadFile = File(...)):
             "positive_classes_idx": prediction["positive_classes"],
             "positive_classes_names": positive_classes_names,
             "all_probabilities": [round(float(p), 4) for p in prediction["all_probabilities"]],
-            "uncertainty_gap": round(float(prediction["uncertainty_gap"]), 4)
+            "uncertainty_gap": round(float(prediction["uncertainty_gap"]), 4),
+            "warning": warning
         }
+        # return {
+        #     "status": "success",
+        #     "filename": image.filename,
+        #     "positive_classes_idx": prediction["positive_classes"],
+        #     "positive_classes_names": positive_classes_names,
+        #     "all_probabilities": [round(float(p), 4) for p in prediction["all_probabilities"]],
+        #     "uncertainty_gap": round(float(prediction["uncertainty_gap"]), 4)
+        # }
     except Exception as e:
         print(f"Error processing image: {e}")
         raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
