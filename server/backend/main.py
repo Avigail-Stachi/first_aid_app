@@ -243,36 +243,77 @@ async def upload_image(image: UploadFile = File(...)):
             1: "Second-degree burn",
             2: "Third-degree burn",
         }
-#v
-        positive_classes_names = [class_names.get(idx, f"Class_{idx}") for idx in prediction["positive_classes"]]
+        positive_classes_idx = prediction_result["positive_classes"]
+        positive_classes_names = [class_names.get(idx, f"Class_{idx}") for idx in positive_classes_idx]
+        uncertainty_gap = prediction_result["uncertainty_gap"]
+
         warning = None
-        if len(prediction["positive_classes"]) == 0:
-            warning = "⚠️ No burn detected with sufficient confidence."
-        elif len(prediction["positive_classes"]) == 1 and prediction["uncertainty_gap"] < 0.05:
+        has_decision_after_image = False
+        result_for_frontend = ""
+
+        if len(positive_classes_idx) == 0:
+            warning = "⚠️ No burn detected with sufficient confidence. Please try another image or describe the injury."
+            result_for_frontend = "burns (awaiting image for severity assessment)"  # נחזיר מצב של צורך בתמונה
+            has_decision_after_image = False  # עדיין לא החלטה סופית
+        elif len(positive_classes_idx) > 0 and uncertainty_gap < 0.1:  # סף נמוך יותר לאי וודאות
             warning = "⚠️ Low confidence in classification. Try another angle or lighting."
-        elif len(prediction["positive_classes"]) > 1:
-            warning = "⚠️ Multiple burn types detected."
+            result_for_frontend = "burns (awaiting image for severity assessment)"  # גם כאן, נבקש תמונה נוספת או נשאיר במצב של חוסר וודאות
+            has_decision_after_image = False  # עדיין לא החלטה סופית
+        elif len(positive_classes_idx) > 1:
+            warning = "⚠️ Multiple burn types detected. Treatment may vary."
+            result_for_frontend = f"burns (degrees {', '.join(map(str, [idx + 1 for idx in positive_classes_idx]))})"
+            has_decision_after_image = True  # זו החלטה מספקת לטיפול רב-דרגתי
+        else:  # זוהתה דרגה אחת עם מספיק ביטחון
+            result_for_frontend = f"burns (degree {positive_classes_idx[0] + 1})"
+            has_decision_after_image = True
 
         return {
             "status": "success",
             "filename": image.filename,
-            "positive_classes_idx": prediction["positive_classes"],
-            "positive_classes_names": positive_classes_names,
-            "all_probabilities": [round(float(p), 4) for p in prediction["all_probabilities"]],
-            "uncertainty_gap": round(float(prediction["uncertainty_gap"]), 4),
-            "warning": warning
+            "positive_classes_idx": positive_classes_idx,  # האינדקסים (0,1,2)
+            "positive_classes_names": positive_classes_names,  # שמות הדרגות (First-degree burn)
+            "all_probabilities": [round(float(p), 4) for p in prediction_result["all_probabilities"]],
+            "uncertainty_gap": round(float(uncertainty_gap), 4),
+            "warning": warning,
+            "result": result_for_frontend,  # התשובה הסופית של המודל (מה יופיע בצ'אט ומה ייכנס ל-treatmentParams)
+            "has_decision": has_decision_after_image  # האם זו החלטה סופית?
         }
-        # return {
-        #     "status": "success",
-        #     "filename": image.filename,
-        #     "positive_classes_idx": prediction["positive_classes"],
-        #     "positive_classes_names": positive_classes_names,
-        #     "all_probabilities": [round(float(p), 4) for p in prediction["all_probabilities"]],
-        #     "uncertainty_gap": round(float(prediction["uncertainty_gap"]), 4)
-        # }
+
     except Exception as e:
         print(f"Error processing image: {e}")
         raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
+
+
+#
+    #     positive_classes_names = [class_names.get(idx, f"Class_{idx}") for idx in prediction["positive_classes"]]
+    #     warning = None
+    #     if len(prediction["positive_classes"]) == 0:
+    #         warning = "⚠️ No burn detected with sufficient confidence."
+    #     elif len(prediction["positive_classes"]) == 1 and prediction["uncertainty_gap"] < 0.05:
+    #         warning = "⚠️ Low confidence in classification. Try another angle or lighting."
+    #     elif len(prediction["positive_classes"]) > 1:
+    #         warning = "⚠️ Multiple burn types detected."
+    #
+    #     return {
+    #         "status": "success",
+    #         "filename": image.filename,
+    #         "positive_classes_idx": prediction["positive_classes"],
+    #         "positive_classes_names": positive_classes_names,
+    #         "all_probabilities": [round(float(p), 4) for p in prediction["all_probabilities"]],
+    #         "uncertainty_gap": round(float(prediction["uncertainty_gap"]), 4),
+    #         "warning": warning
+    #     }
+    #     # return {
+    #     #     "status": "success",
+    #     #     "filename": image.filename,
+    #     #     "positive_classes_idx": prediction["positive_classes"],
+    #     #     "positive_classes_names": positive_classes_names,
+    #     #     "all_probabilities": [round(float(p), 4) for p in prediction["all_probabilities"]],
+    #     #     "uncertainty_gap": round(float(prediction["uncertainty_gap"]), 4)
+    #     # }
+    # except Exception as e:
+    #     print(f"Error processing image: {e}")
+    #     raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
 @app.get("/treatment")
 async def get_treatment(
     case_type: str = Query(..., description="Type of emergency case"),
