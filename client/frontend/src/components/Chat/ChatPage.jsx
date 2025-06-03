@@ -10,7 +10,7 @@ import ChatActions from "./ChatActions";
 import { ChatContext } from "../../context/ChatContext";
 // import { speakText } from "../speech";
 const ChatPage = () => {
-  //ff
+  //אישמ
   const navigate = useNavigate();
   const [lastPrediction, setLastPrediction] = useState("");
   const {
