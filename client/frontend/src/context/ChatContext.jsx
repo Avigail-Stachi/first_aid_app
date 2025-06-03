@@ -11,19 +11,30 @@ export const ChatProvider = ({ children }) => {
   const [isFinalDecision, setIsFinalDecision] = useState(false);
   const [locationSent, setLocationSent] = useState(false);
   const [showImageCapture, setShowImageCapture] = useState(false);
-  const [treatmentParams, setTreatmentParams] = useState(null);
-
+  const [treatmentParams, setTreatmentParams] = useState({
+    caseType: "",
+    degree: undefined, // עבור מקרים שאינם כוויות, או כוויה עם דרגה בודדת מהאבחון הטקסטואלי
+    hasImageDiagnosis: false, // האם האבחון האחרון כלל תמונה
+    identifiedDegrees: [], // מערך של דרגות כוויה זוהות מהתמונה (לדוגמה: [1, 2])
+  });
+  
   const navigate = useNavigate();
 
   const newChat = () => {
     setMessages([]);
-    setHistory([]);
     setInputMsg("");
+    setHistory([]);
     setAmbulance_flag(false);
     setIsFinalDecision(false);
     setLocationSent(false);
     setShowImageCapture(false);
-    setTreatmentParams(null);
+    // איפוס מלא של treatmentParams לערכים ההתחלתיים
+    setTreatmentParams({
+      caseType: "",
+      degree: undefined,
+      hasImageDiagnosis: false,
+      identifiedDegrees: [],
+    });
     navigate("/chat");
   };
 
