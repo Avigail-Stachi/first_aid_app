@@ -236,7 +236,7 @@ async def upload_image(image: UploadFile = File(...)):
         with open(file_location, "wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
 
-        prediction = class_pred_photo.predict_multi_label(file_location, threshold=0.5)
+        prediction = class_pred_photo.predict_multi_label(file_location, threshold=0.4)
 
         class_names = {
             0: "First-degree burn",
