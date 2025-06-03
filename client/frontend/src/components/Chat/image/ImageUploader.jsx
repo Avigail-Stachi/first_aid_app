@@ -20,35 +20,64 @@ const ImageUploader = ({ onImageSend }) => {
   } = useContext(ChatContext);
 
   // התחלת זרם המצלמה כשמציגים את הוידאו
-  useEffect(() => {
-    const startStream = async () => {
-      if (!showCamera || !videoRef.current) return;
+  // useEffect(() => {
+  //   const startStream = async () => {
+  //     if (!showCamera || !videoRef.current) return;
 
-      try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        videoRef.current.srcObject = mediaStream;
-        setStream(mediaStream);
-      } catch (err) {
-        console.error("Failed to access camera:", err);
-        alert("Camera access denied or not available.");
-        setShowCamera(false);
-      }
-    };
+  //     try {
+  //       const mediaStream = await navigator.mediaDevices.getUserMedia({
+  //         video: true,
+  //       });
+  //       videoRef.current.srcObject = mediaStream;
+  //       setStream(mediaStream);
+  //     } catch (err) {
+  //       console.error("Failed to access camera:", err);
+  //       alert("Camera access denied or not available.");
+  //       setShowCamera(false);
+  //     }
+  //   };
 
-    startStream();
+  //   startStream();
 
-    // ניקוי הזרם והpreview כשמתפרקים או כש-showCamera משתנה
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-        setStream(null);
-      }
-      if (preview) {
-        URL.revokeObjectURL(preview);
-        setPreview(null);
-      }
-    };
-  }, [showCamera]);
+  //   // ניקוי הזרם והpreview כשמתפרקים או כש-showCamera משתנה
+  //   return () => {
+  //     if (stream) {
+  //       stream.getTracks().forEach((track) => track.stop());
+  //       setStream(null);
+  //     }
+  //     if (preview) {
+  //       URL.revokeObjectURL(preview);
+  //       setPreview(null);
+  //     }
+  //   };
+  // }, [showCamera]);
+useEffect(() => {
+  if (!showCamera || !videoRef.current) return;
+
+  let activeStream = null;
+
+  const startStream = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      videoRef.current.srcObject = mediaStream;
+      setStream(mediaStream);
+      activeStream = mediaStream;  // שמירת הזרם המקומי
+    } catch (err) {
+      console.error("Failed to access camera:", err);
+      alert("Camera access denied or not available.");
+      setShowCamera(false);
+    }
+  };
+
+  startStream();
+
+  return () => {
+    if (activeStream) {
+      activeStream.getTracks().forEach(track => track.stop());
+    }
+    setStream(null);
+  };
+}, [showCamera]);
 
   // טיפול בבחירת קובץ מהמחשב
   const handleFileChange = async (e) => {
@@ -158,34 +187,38 @@ const ImageUploader = ({ onImageSend }) => {
       // }
       let messageText = "";
 
-      if (data.has_decision) {
-        if (Array.isArray(data.result)) {
-          messageText =
-            `🩺 We detected ${data.result.length} burn injuries in the image:\n\n` +
-            data.result
-              .map((item, idx) => `• Burn #${idx + 1}: Degree ${item.degree}`)
-              .join("\n") +
-            `\n\nIf you believe one is missing, try uploading a clearer image.`;
-        } else {
-          messageText = `🩺 We detected one burn injury${data.degree ? ` (Degree ${data.degree})` : ""}.`;
+      if (
+        data.positive_classes_names &&
+        data.positive_classes_names.length > 0
+      ) {
+        messageText =
+          `Detected burn types:\n` +
+          data.positive_classes_names
+            .map((name, idx) => `• ${name}`)
+            .join("\n");
+        if (data.warning) {
+          messageText += `\n\n⚠️ ${data.warning}`;
         }
       } else {
         messageText =
           `⚠️ We could not determine the burn severity with high confidence.\n` +
-          (data.result
-            ? `It might be: ${data.result}.\n`
-            : "") +
+          (data.warning ? `Warning: ${data.warning}\n` : "") +
           `Please try uploading another image from a different angle or in better lighting.`;
       }
 
       setMessages((prev) => [...prev, { text: messageText, fromUser: false }]);
-      setIsFinalDecision(data.has_decision);
+      setIsFinalDecision(
+        data.positive_classes_names && data.positive_classes_names.length > 0
+      );
       setHistory((prev) => [...prev, "🖼️ Image uploaded"]);
 
-      if (data.has_decision) {
+      if (
+        data.positive_classes_names &&
+        data.positive_classes_names.length > 0
+      ) {
         setTreatmentParams({
-          caseType: data.result,
-          degree: data.degree ?? undefined,
+          caseType: data.positive_classes_names,
+          // במידה ויש צורך בדירוג, צריך להעביר אותו מהשרת (כרגע לא מוגדר)
         });
         setShowImageCapture(false);
       } else {
@@ -199,6 +232,48 @@ const ImageUploader = ({ onImageSend }) => {
       ]);
     }
   };
+
+  //     if (data.has_decision) {
+  //       if (Array.isArray(data.result)) {
+  //         messageText =
+  //           `🩺 We detected ${data.result.length} burn injuries in the image:\n\n` +
+  //           data.result
+  //             .map((item, idx) => `• Burn #${idx + 1}: Degree ${item.degree}`)
+  //             .join("\n") +
+  //           `\n\nIf you believe one is missing, try uploading a clearer image.`;
+  //       } else {
+  //         messageText = `🩺 We detected one burn injury${data.degree ? ` (Degree ${data.degree})` : ""}.`;
+  //       }
+  //     } else {
+  //       messageText =
+  //         `⚠️ We could not determine the burn severity with high confidence.\n` +
+  //         (data.result
+  //           ? `It might be: ${data.result}.\n`
+  //           : "") +
+  //         `Please try uploading another image from a different angle or in better lighting.`;
+  //     }
+
+  //     setMessages((prev) => [...prev, { text: messageText, fromUser: false }]);
+  //     setIsFinalDecision(data.has_decision);
+  //     setHistory((prev) => [...prev, "🖼️ Image uploaded"]);
+
+  //     if (data.has_decision) {
+  //       setTreatmentParams({
+  //         caseType: data.result,
+  //         degree: data.degree ?? undefined,
+  //       });
+  //       setShowImageCapture(false);
+  //     } else {
+  //       setShowImageCapture(true);
+  //     }
+  //   } catch (err) {
+  //     console.error("Failed to send image:", err.message);
+  //     setMessages((prev) => [
+  //       ...prev,
+  //       { text: `Image upload failed: ${err.message}`, fromUser: false },
+  //     ]);
+  //   }
+  // };
 
   return (
     <div>
@@ -221,7 +296,9 @@ const ImageUploader = ({ onImageSend }) => {
             style={{ width: "100%", maxWidth: "400px" }}
           />
           <button onClick={handleTakePhoto}>📸 Capture</button>
-          <button onClick={stopCamera} style={{ marginLeft: "10px" }}>✖️ Cancel</button>
+          <button onClick={stopCamera} style={{ marginLeft: "10px" }}>
+            ✖️ Cancel
+          </button>
         </div>
       )}
 
