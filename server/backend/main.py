@@ -243,7 +243,7 @@ async def upload_image(image: UploadFile = File(...)):
             1: "Second-degree burn",
             2: "Third-degree burn",
         }
-
+#v
         positive_classes_names = [class_names.get(idx, f"Class_{idx}") for idx in prediction["positive_classes"]]
 
         return {
