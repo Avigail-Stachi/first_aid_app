@@ -1,62 +1,89 @@
 import React, { useRef, useState, useEffect, useContext } from "react";
 import { ChatContext } from "../../../context/ChatContext";
+
 const ImageUploader = ({ onImageSend }) => {
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+
   const [preview, setPreview] = useState(null);
   const [showCamera, setShowCamera] = useState(false);
   const [stream, setStream] = useState(null);
+
   const {
     setMessages,
-    setAmbulance_flag,
     setIsFinalDecision,
     setTreatmentParams,
     setShowImageCapture,
-    history,
+    //history,
     setHistory,
   } = useContext(ChatContext);
+
+  // התחלת זרם המצלמה כשמציגים את הוידאו
   useEffect(() => {
     const startStream = async () => {
       if (!showCamera || !videoRef.current) return;
 
       try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
+        const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
         videoRef.current.srcObject = mediaStream;
         setStream(mediaStream);
       } catch (err) {
         console.error("Failed to access camera:", err);
         alert("Camera access denied or not available.");
+        setShowCamera(false);
       }
     };
 
     startStream();
+
+    // ניקוי הזרם והpreview כשמתפרקים או כש-showCamera משתנה
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+        setStream(null);
+      }
+      if (preview) {
+        URL.revokeObjectURL(preview);
+        setPreview(null);
+      }
+    };
   }, [showCamera]);
 
+  // טיפול בבחירת קובץ מהמחשב
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setPreview(imageUrl);
-      await sendImageToServer(file, imageUrl);
+    if (!file) return;
+
+    // ניקוי קישור preview קודם
+    if (preview) {
+      URL.revokeObjectURL(preview);
     }
+
+    const imageUrl = URL.createObjectURL(file);
+    setPreview(imageUrl);
+
+    await sendImageToServer(file, imageUrl);
   };
 
   const handleOpenFileDialog = () => {
-    fileInputRef.current.click();
-  };
-  const handleStartCamera = () => {
-    setShowCamera(true); // רק מפעיל את התצוגה, בלי לגשת לוידאו עדיין
+    fileInputRef.current?.click();
   };
 
-  const handleTakePhoto = async () => {
+  const handleStartCamera = () => {
+    setShowCamera(true);
+  };
+
+  // צילום תמונה מהוידאו
+  const handleTakePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
     const video = videoRef.current;
     const canvas = canvasRef.current;
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+
     const ctx = canvas.getContext("2d");
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
@@ -65,11 +92,17 @@ const ImageUploader = ({ onImageSend }) => {
         console.error("Failed to get blob from canvas");
         return;
       }
-      const file = new File([blob], "photo.jpg", { type: "image/jpeg" }); // תני שם ברור עם סיומת
 
+      // ניקוי preview קודם
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+
+      const file = new File([blob], "photo.jpg", { type: "image/jpeg" });
       const imageUrl = URL.createObjectURL(blob);
+
       setPreview(imageUrl);
-      await sendImageToServer(file, imageUrl); // שולחים File ולא Blob
+      await sendImageToServer(file, imageUrl);
       stopCamera();
     }, "image/jpeg");
   };
@@ -77,10 +110,12 @@ const ImageUploader = ({ onImageSend }) => {
   const stopCamera = () => {
     if (stream) {
       stream.getTracks().forEach((track) => track.stop());
+      setStream(null);
     }
     setShowCamera(false);
   };
 
+  // שליחת התמונה לשרת ועיבוד התגובה
   const sendImageToServer = async (fileOrBlob, previewUrl) => {
     onImageSend(previewUrl);
 
@@ -92,7 +127,7 @@ const ImageUploader = ({ onImageSend }) => {
         method: "POST",
         body: formData,
       });
-      //cc
+
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Image upload error:", errorText);
@@ -100,44 +135,40 @@ const ImageUploader = ({ onImageSend }) => {
           ...prev,
           { text: `Image upload failed: ${errorText}`, fromUser: false },
         ]);
+        return;
+      }
+
+      const data = await res.json();
+      console.log("Image uploaded and processed:", data);
+
+      let messageText = "";
+
+      if (data.has_decision) {
+        if (Array.isArray(data.result)) {
+          messageText =
+            `Detected ${data.result.length} injuries:\n` +
+            data.result.map((item) => `• ${item.type} (Degree ${item.degree})`).join("\n");
+        } else {
+          messageText = `Detected injury: ${data.result} ${data.degree ? `(Degree ${data.degree})` : ""}`;
+        }
       } else {
-        const data = await res.json();
-        console.log("Image uploaded and processed:", data);
+        messageText = `Uncertain result. ${
+          data.result ? "Possible type: " + data.result + "." : ""
+        } Please provide another image for better assessment.`;
+      }
 
-        setMessages((prev) => [
-          ...prev,
-          { text: data.result || "Received response.", fromUser: false },
-          ...(data.ambulance_flag
-            ? [
-                {
-                  text: "Ambulance required!",
-                  fromUser: false,
-                  isAmbulanceAlert: true,
-                },
-              ]
-            : []),
-        ]);
+      setMessages((prev) => [...prev, { text: messageText, fromUser: false }]);
+      setIsFinalDecision(data.has_decision);
+      setHistory((prev) => [...prev, "🖼️ Image uploaded"]);
 
-        setAmbulance_flag(data.ambulance_flag);
-        setIsFinalDecision(data.has_decision);
-        setHistory((prev) => [...prev, "🖼️ Image uploaded"]);
-        if (data.has_decision) {
-          setTreatmentParams({
-            caseType: data.result,
-            degree: data.degree ?? undefined,
-          });
-        }
-
-        // במקרה והתגובה לא דורשת תמונה נוספת
-        if (
-          !(
-            data.result &&
-            data.result.toLowerCase().includes("burns") &&
-            data.result.toLowerCase().includes("awaiting image")
-          )
-        ) {
-          setShowImageCapture(false);
-        }
+      if (data.has_decision) {
+        setTreatmentParams({
+          caseType: data.result,
+          degree: data.degree ?? undefined,
+        });
+        setShowImageCapture(false);
+      } else {
+        setShowImageCapture(true);
       }
     } catch (err) {
       console.error("Failed to send image:", err.message);
@@ -147,21 +178,6 @@ const ImageUploader = ({ onImageSend }) => {
       ]);
     }
   };
-
-  //       if (!res.ok) {
-  //         const errorText = await res.text();
-  //         console.error("Image upload error:", errorText);
-  //       } else {
-  //         console.log("Image uploaded successfully");
-  //       }
-  //     } catch (err) {
-  //       console.error("Failed to send image:", err.message);
-  //     }
-  //   };
-
-  useEffect(() => {
-    return () => stopCamera(); // Clean up on unmount
-  }, []);
 
   return (
     <div>
@@ -184,6 +200,7 @@ const ImageUploader = ({ onImageSend }) => {
             style={{ width: "100%", maxWidth: "400px" }}
           />
           <button onClick={handleTakePhoto}>📸 Capture</button>
+          <button onClick={stopCamera} style={{ marginLeft: "10px" }}>✖️ Cancel</button>
         </div>
       )}
 
