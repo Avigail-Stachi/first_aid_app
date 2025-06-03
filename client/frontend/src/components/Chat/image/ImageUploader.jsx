@@ -76,8 +76,12 @@ useEffect(() => {
       activeStream.getTracks().forEach(track => track.stop());
     }
     setStream(null);
+    if (preview) {
+      URL.revokeObjectURL(preview);
+      setPreview(null);
+    }
   };
-}, [showCamera]);
+}, [showCamera, preview]);
 
   // טיפול בבחירת קובץ מהמחשב
   const handleFileChange = async (e) => {
@@ -164,6 +168,18 @@ useEffect(() => {
           ...prev,
           { text: `Image upload failed: ${errorText}`, fromUser: false },
         ]);
+
+
+         setTreatmentParams({ 
+          caseType: "",
+          degree: undefined,
+          hasImageDiagnosis: false,
+          identifiedDegrees: [],
+          serverWarning: undefined,
+          resultAwaitingImage: false, 
+        });
+        setIsFinalDecision(false); 
+        setShowImageCapture(true);
         return;
       }
 
@@ -207,29 +223,78 @@ useEffect(() => {
       }
 
       setMessages((prev) => [...prev, { text: messageText, fromUser: false }]);
-      setIsFinalDecision(
-        data.positive_classes_names && data.positive_classes_names.length > 0
-      );
+      // setIsFinalDecision(
+      //   data.positive_classes_names && data.positive_classes_names.length > 0
+      // );
       setHistory((prev) => [...prev, "🖼️ Image uploaded"]);
 
-      if (
-        data.positive_classes_names &&
-        data.positive_classes_names.length > 0
-      ) {
-        setTreatmentParams({
-          caseType: data.positive_classes_names,
-          // במידה ויש צורך בדירוג, צריך להעביר אותו מהשרת (כרגע לא מוגדר)
-        });
-        setShowImageCapture(false);
-      } else {
-        setShowImageCapture(true);
-      }
+
+
+      
+  //     if (
+  //       data.positive_classes_names &&
+  //       data.positive_classes_names.length > 0
+  //     ) {
+  //       setTreatmentParams({
+  //         caseType: data.positive_classes_names,
+  //         // במידה ויש צורך בדירוג, צריך להעביר אותו מהשרת (כרגע לא מוגדר)
+  //       });
+  //       setShowImageCapture(false);
+  //     } else {
+  //       setShowImageCapture(true);
+  //     }
+
+
+
+
+  //   } catch (err) {
+  //     console.error("Failed to send image:", err.message);
+  //     setMessages((prev) => [
+  //       ...prev,
+  //       { text: `Image upload failed: ${err.message}`, fromUser: false },
+  //     ]);
+  //   }
+  // };
+
+
+const identifiedDegreesFromImage = data.positive_classes_names || [];
+
+      const newTreatmentParams = {
+        caseType: "burn",
+        hasImageDiagnosis: true,
+        identifiedDegrees: identifiedDegreesFromImage,
+        degree: undefined,
+        serverWarning: data.warning,
+        resultAwaitingImage: data.result && data.result.toLowerCase().includes("awaiting image"),
+      };
+      setTreatmentParams(newTreatmentParams);
+
+      setIsFinalDecision(
+        !data.warning && // אם אין אזהרה, זה נחשב ל"החלטה סופית"
+        !newTreatmentParams.resultAwaitingImage && // אם לא ממתינים לתמונה נוספת
+        identifiedDegreesFromImage.length > 0 // ואם זוהו דרגות
+      );
+
+      // נציג שוב את כפתורי לכידת התמונה רק אם יש אזהרה או אם ממתינים לתמונה נוספת
+      setShowImageCapture(!!data.warning || newTreatmentParams.resultAwaitingImage);
+
     } catch (err) {
       console.error("Failed to send image:", err.message);
       setMessages((prev) => [
         ...prev,
         { text: `Image upload failed: ${err.message}`, fromUser: false },
       ]);
+      // עדכון treatmentParams במקרה של כשל כללי בשליחה
+      setTreatmentParams({
+        caseType: "",
+        degree: undefined,
+        hasImageDiagnosis: false,
+        identifiedDegrees: [],
+        serverWarning: undefined,
+        resultAwaitingImage: false,
+      });
+      setIsFinalDecision(false);
+      setShowImageCapture(true);
     }
   };
 
