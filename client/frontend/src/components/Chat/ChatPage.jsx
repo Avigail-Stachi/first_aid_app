@@ -4,7 +4,8 @@ import ChatWindow from "./ChatWindow";
 import MessageInput from "./MessageInput";
 import VoiceRecorder from "./VoiceRecorder";
 import LocationFetcher from "./LocationFetcher";
-import ImageCapture from "../ImageCapture";
+//import ImageCapture from "../ImageCapture";
+import ImageUploader from "./image/ImageUploader";
 import ChatActions from "./ChatActions";
 import { ChatContext } from "../../context/ChatContext";
 // import { speakText } from "../speech";
@@ -181,8 +182,14 @@ const ChatPage = () => {
           degree: data.degree ?? undefined,
         });
       }
-      if (data.request_image) {
+      if (
+        data.result &&
+        data.result.toLowerCase().includes("burns") &&
+        data.result.toLowerCase().includes("awaiting image")
+      ) {
         setShowImageCapture(true);
+      } else {
+        setShowImageCapture(false);
       }
     } catch {
       setMessages((prev) => [
@@ -266,6 +273,23 @@ const ChatPage = () => {
       setHistory(newHistory);
       setAmbulance_flag(ambulanceFlag);
       setIsFinalDecision(finalDecisionFlag);
+      setLastPrediction(finalAnswer);
+          if (finalDecisionFlag) {
+      setTreatmentParams({
+        caseType: finalAnswer,
+        degree: predictData?.degree ?? undefined,
+      });
+    }
+
+    if (
+      finalAnswer &&
+      finalAnswer.toLowerCase().includes("burns") &&
+      finalAnswer.toLowerCase().includes("awaiting image")
+    ) {
+      setShowImageCapture(true);
+    } else {
+      setShowImageCapture(false);
+    }
     } catch (error) {
       setMessages((prev) => [
         ...prev,
@@ -301,7 +325,26 @@ const ChatPage = () => {
       {ambulance_flag && isFinalDecision && !locationSent && (
         <LocationFetcher onLocation={handleLocation} />
       )}
+
       {showImageCapture && (
+<ImageUploader
+  onUploadSuccess={(imgURL) =>
+    setMessages((prev) => [
+      ...prev,
+      {
+        text: `Image uploaded successfully: ${imgURL}`,
+        fromUser: true,
+        isImage: true,
+        imageUrl: imgURL,
+      },
+    ])
+  }
+  onCancel={() => setShowImageCapture(false)}
+/>
+
+      )}
+      {/* Uncomment if you want to use the ImageCapture component */}
+      {/* {showImageCapture && (
         <ImageCapture
           onCancel={() => setShowImageCapture(false)}
           onCapture={(result) => {
@@ -312,7 +355,7 @@ const ChatPage = () => {
             setShowImageCapture(false);
           }}
         />
-      )}
+      )} */}
       <ChatActions
         newChat={newChat}
         treatmentParams={treatmentParams}
