@@ -328,7 +328,7 @@ const ChatPage = () => {
 
       {showImageCapture && (
 <ImageUploader
-  onUploadSuccess={(imgURL) =>
+  onImageSend={(imgURL) =>
     setMessages((prev) => [
       ...prev,
       {
@@ -341,6 +341,7 @@ const ChatPage = () => {
   }
   onCancel={() => setShowImageCapture(false)}
 />
+
 
       )}
       {/* Uncomment if you want to use the ImageCapture component */}
