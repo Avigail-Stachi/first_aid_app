@@ -17,6 +17,6 @@ def zip_folder_concise(folder_path, output_zip_name):
     except Exception as e:
         print(f"An error occurred during zipping: {e}")
 
-folder_to_zip = "final_burn_dataset"
+folder_to_zip = "final_burn_dataset_to_colab"
 output_zip_file = "final_burn_dataset_for_colab.zip"
 zip_folder_concise(folder_to_zip, output_zip_file)
