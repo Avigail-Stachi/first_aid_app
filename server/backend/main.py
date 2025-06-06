@@ -2,11 +2,14 @@ import os
 import uvicorn
 import time
 import shutil
+import base64
 
 from typing import Optional
+
+#from debugpy.common.log import warning
 from fastapi import FastAPI, Request, HTTPException, File, UploadFile,Query
 from fastapi.middleware.cors import CORSMiddleware
-from pooch.utils import unique_file_name
+#from pooch.utils import unique_file_name
 from pydantic import BaseModel
 
 import classifier.predict as class_pred
@@ -14,6 +17,7 @@ import contact.sms_sender as sms_sender
 import transcribe.transcribeOffline as transcribeOffline
 import classifier.predict_photo as class_pred_photo
 from data.traet.treat_from_db import get_treatment_data
+import classifier.infer_burn_degree_faster as predict_with_faster
 # from typing import Dict
 
 app = FastAPI()
@@ -21,8 +25,10 @@ app = FastAPI()
 
 TEMP_UPLOAD_DIR = "temp_uploads"
 UPLOAD_DIR = "uploads"
+PREDICTED_IMAGES_DIR = "predicted_images"
 os.makedirs(TEMP_UPLOAD_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(PREDICTED_IMAGES_DIR, exist_ok=True)
 
 #כשהמצב הוא לא פיתוח אז לעשות בקומנד
 #set ENVIRONMENT=production
@@ -53,6 +59,12 @@ app.add_middleware(
 print("ENVIRONMENT:", ENVIRONMENT)
 print("CORS origins:", origins)
 
+try:
+    predict_with_faster.load_inference_model()
+    print("Faster inference model loaded successfully.")
+except (FileNotFoundError, RuntimeError) as e:
+    print(f"Critical error loading faster inference model: {e}")
+    exit()
 
 
 class RequestBody(BaseModel):
@@ -190,6 +202,70 @@ async def send_sms(location:Location):
             "manual_message": result["manual_message"],
             "technical_details": result["technical_details"]
         })
+
+
+
+
+@app.post('/upload-burn-image-faster')
+async def upload_burn_image_faster(image: UploadFile = File(...)):
+    try:
+        if not image.filename.lower().endswith((".jpg", ".jpeg", ".png")):
+            raise HTTPException(status_code=400, detail="Unsupported image format.")
+
+        timestamp = int(time.time())
+        unique_filename = f"{timestamp}_{image.filename}"
+        file_location = os.path.join(UPLOAD_DIR, unique_filename)
+        with open(file_location, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+
+        detected_objects, output_image_path = predict_with_faster.predict_on_image(file_location, PREDICTED_IMAGES_DIR,
+                                                                                   score_threshold=0.4)
+
+        if os.path.exists(file_location):
+            os.remove(file_location)
+
+        burn_degrees_detected = sorted(list(set([obj['label'] for obj in detected_objects])))
+        result_message =""
+        has_decision_after_image = False
+        warning= None
+
+        if not burn_degrees_detected:
+            warning = "⚠️ לא זוהתה כוויה בביטחון מספק. אנא נסה תמונה נוספת או תאר את הפציעה."
+            result_message = "burns (awaiting image for severity assessment)"
+        elif len(burn_degrees_detected) == 1:
+            degree_str = burn_degrees_detected[0].replace('degree_', '')
+            result_message = f"burns (degree {degree_str})"
+            has_decision_after_image = True
+        else:
+            degrees_formatted = ", ".join([d.replace('degree_', '') for d in burn_degrees_detected])
+            result_message = f"burns (degrees {degrees_formatted})"
+            warning = "⚠️ זוהו מספר סוגי כוויות. הטיפול עשוי להשתנות."
+            has_decision_after_image = True
+
+        with open(output_image_path, "rb") as img_file:
+            encoded_image_string = base64.b64encode(img_file.read()).decode('utf-8')
+
+        if os.path.exists(output_image_path):
+            os.remove(output_image_path)
+
+        return {
+            "status": "success",
+            "filename": image.filename,
+            "detected_objects": detected_objects,
+            "result": result_message,
+            "has_decision": has_decision_after_image,
+            "warning": warning,
+            "predicted_image_base64": encoded_image_string
+        }
+
+    except Exception as e:
+        print(f"שגיאה בעיבוד תמונה עם Faster R-CNN: {e}")
+        raise HTTPException(status_code=500, detail=f"שגיאה בעיבוד התמונה: {str(e)}")
+
+
+
+
+
 # @app.post("/upload-image")
 # async def upload_image(image: UploadFile = File(...)):
 #     try:
@@ -222,66 +298,68 @@ async def send_sms(location:Location):
 #     except Exception as e:
 #         print(f"Error processing image: {e}")
 #         raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
-@app.post("/upload-image")
-async def upload_image(image: UploadFile = File(...)):
-    try:
-        if not image.filename.lower().endswith((".jpg", ".jpeg", ".png")):
-            raise HTTPException(status_code=400, detail="Unsupported image format.")
+# @app.post("/upload-image")
+# async def upload_image(image: UploadFile = File(...)):
+#     try:
+#         if not image.filename.lower().endswith((".jpg", ".jpeg", ".png")):
+#             raise HTTPException(status_code=400, detail="Unsupported image format.")
+#
+#         upload_dir = "uploads"
+#         os.makedirs(upload_dir, exist_ok=True)  # ודא שהתיקייה קיימת
+#
+#         unique_filename = f"{int(time.time())}_{image.filename}"
+#         file_location = os.path.join(upload_dir, unique_filename)
+#         with open(file_location, "wb") as buffer:
+#             shutil.copyfileobj(image.file, buffer)
+#
+#         prediction = class_pred_photo.predict_multi_label(file_location, threshold=0.4)
+#
+#         class_names = {
+#             0: "First-degree burn",
+#             1: "Second-degree burn",
+#             2: "Third-degree burn",
+#         }
+#         positive_classes_idx = prediction["positive_classes"]
+#         positive_classes_names = [class_names.get(idx, f"Class_{idx}") for idx in positive_classes_idx]
+#         uncertainty_gap = prediction["uncertainty_gap"]
+#
+#         warning = None
+#         has_decision_after_image = False
+#         result_for_frontend = ""
+#
+#         if len(positive_classes_idx) == 0:
+#             warning = "⚠️ No burn detected with sufficient confidence. Please try another image or describe the injury."
+#             result_for_frontend = "burns (awaiting image for severity assessment)"  # נחזיר מצב של צורך בתמונה
+#             has_decision_after_image = False  # עדיין לא החלטה סופית
+#         elif len(positive_classes_idx) > 0 and uncertainty_gap < 0.1:  # סף נמוך יותר לאי וודאות
+#             warning = "⚠️ Low confidence in classification. Try another angle or lighting."
+#             result_for_frontend = "burns (awaiting image for severity assessment)"  # גם כאן, נבקש תמונה נוספת או נשאיר במצב של חוסר וודאות
+#             has_decision_after_image = False  # עדיין לא החלטה סופית
+#         elif len(positive_classes_idx) > 1:
+#             warning = "⚠️ Multiple burn types detected. Treatment may vary."
+#             result_for_frontend = f"burns (degrees {', '.join(map(str, [idx + 1 for idx in positive_classes_idx]))})"
+#             has_decision_after_image = True  # זו החלטה מספקת לטיפול רב-דרגתי
+#         else:  # זוהתה דרגה אחת עם מספיק ביטחון
+#             result_for_frontend = f"burns (degree {positive_classes_idx[0] + 1})"
+#             has_decision_after_image = True
+#
+#         return {
+#             "status": "success",
+#             "filename": image.filename,
+#             "positive_classes_idx": positive_classes_idx,  # האינדקסים (0,1,2)
+#             "positive_classes_names": positive_classes_names,  # שמות הדרגות (First-degree burn)
+#             "all_probabilities": [round(float(p), 4) for p in prediction["all_probabilities"]],
+#             "uncertainty_gap": round(float(uncertainty_gap), 4),
+#             "warning": warning,
+#             "result": result_for_frontend,  # התשובה הסופית של המודל (מה יופיע בצ'אט ומה ייכנס ל-treatmentParams)
+#             "has_decision": has_decision_after_image  # האם זו החלטה סופית?
+#         }
+#
+#     except Exception as e:
+#         print(f"Error processing image: {e}")
+#         raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
+#
 
-        upload_dir = "uploads"
-        os.makedirs(upload_dir, exist_ok=True)  # ודא שהתיקייה קיימת
-
-        unique_filename = f"{int(time.time())}_{image.filename}"
-        file_location = os.path.join(upload_dir, unique_filename)
-        with open(file_location, "wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
-
-        prediction = class_pred_photo.predict_multi_label(file_location, threshold=0.4)
-
-        class_names = {
-            0: "First-degree burn",
-            1: "Second-degree burn",
-            2: "Third-degree burn",
-        }
-        positive_classes_idx = prediction["positive_classes"]
-        positive_classes_names = [class_names.get(idx, f"Class_{idx}") for idx in positive_classes_idx]
-        uncertainty_gap = prediction["uncertainty_gap"]
-
-        warning = None
-        has_decision_after_image = False
-        result_for_frontend = ""
-
-        if len(positive_classes_idx) == 0:
-            warning = "⚠️ No burn detected with sufficient confidence. Please try another image or describe the injury."
-            result_for_frontend = "burns (awaiting image for severity assessment)"  # נחזיר מצב של צורך בתמונה
-            has_decision_after_image = False  # עדיין לא החלטה סופית
-        elif len(positive_classes_idx) > 0 and uncertainty_gap < 0.1:  # סף נמוך יותר לאי וודאות
-            warning = "⚠️ Low confidence in classification. Try another angle or lighting."
-            result_for_frontend = "burns (awaiting image for severity assessment)"  # גם כאן, נבקש תמונה נוספת או נשאיר במצב של חוסר וודאות
-            has_decision_after_image = False  # עדיין לא החלטה סופית
-        elif len(positive_classes_idx) > 1:
-            warning = "⚠️ Multiple burn types detected. Treatment may vary."
-            result_for_frontend = f"burns (degrees {', '.join(map(str, [idx + 1 for idx in positive_classes_idx]))})"
-            has_decision_after_image = True  # זו החלטה מספקת לטיפול רב-דרגתי
-        else:  # זוהתה דרגה אחת עם מספיק ביטחון
-            result_for_frontend = f"burns (degree {positive_classes_idx[0] + 1})"
-            has_decision_after_image = True
-
-        return {
-            "status": "success",
-            "filename": image.filename,
-            "positive_classes_idx": positive_classes_idx,  # האינדקסים (0,1,2)
-            "positive_classes_names": positive_classes_names,  # שמות הדרגות (First-degree burn)
-            "all_probabilities": [round(float(p), 4) for p in prediction["all_probabilities"]],
-            "uncertainty_gap": round(float(uncertainty_gap), 4),
-            "warning": warning,
-            "result": result_for_frontend,  # התשובה הסופית של המודל (מה יופיע בצ'אט ומה ייכנס ל-treatmentParams)
-            "has_decision": has_decision_after_image  # האם זו החלטה סופית?
-        }
-
-    except Exception as e:
-        print(f"Error processing image: {e}")
-        raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
 
 
 #
