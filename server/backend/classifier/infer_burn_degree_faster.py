@@ -70,7 +70,7 @@ def load_inference_model():
 
 
 # --- פונקציית חיזוי על קלט חדש ---
-def predict_on_image(image_path: str, score_threshold: float = 0.7):
+def predict_on_image(image_path: str, score_threshold: float = 0.4):
     """
     מבצעת חיזוי על תמונה בודדת ומציגה את תיבות התוחם.
     המודל חייב להיות טעון באמצעות `load_inference_model()` לפני קריאה לפונקציה זו.
@@ -152,7 +152,7 @@ except (FileNotFoundError, RuntimeError) as e:
     print(f"שגיאה קריטית בטעינת המודל: {e}")
     exit()  # יוצא מהסקריפט אם המודל לא נטען
 
-example_image_for_test = r"C:\Users\User\Projects\first_aid_app\server\backend\data\photos\img55.jpg"
+example_image_for_test = r"C:\Users\User\Projects\first_aid_app\server\backend\data\photos\final_burn_dataset\train\train_images\img4.jpg"
 
 # יצירת קובץ תמונה ריק לדוגמה אם הוא לא קיים
 # (רק לצורך הדגמה כדי שהקוד יעבוד גם ללא תמונה אמיתית)
@@ -170,7 +170,7 @@ if not os.path.exists(example_image_for_test):
 # 3. הפעלת חיזוי על התמונה לדוגמה
 print(f"\nמבצע חיזוי על התמונה: {example_image_for_test}")
 try:
-    detections = predict_on_image(example_image_for_test, score_threshold=0.7)
+    detections = predict_on_image(example_image_for_test, score_threshold=0.4)
 
     if detections:
         print("\nאובייקטים שזוהו בתמונה:")
