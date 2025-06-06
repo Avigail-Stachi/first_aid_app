@@ -24,7 +24,11 @@ export default function ChatActions() {
       console.log(
         "  Result awaiting image:",
         treatmentParams.resultAwaitingImage
-      ); // נוסף!
+      );
+      console.log(
+        "   Predicted Image Base64 (exists):",
+        !!treatmentParams.predictedImageBase64 // <--- שינוי
+      );
     }
   }, [treatmentParams]);
   const handleWhatToDoClick = () => {

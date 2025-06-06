@@ -1,16 +1,22 @@
-import React from "react";
+import React, {useEffect,useRef} from "react";
 import { speakText } from "../speech";
 const ChatWindow = ({ messages }) => {
-  return (
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
+    
+    return (
     <div
       style={{
         border: "1px solid #ccc",
-        borderRadius: "8px",
         padding: "1rem",
         height: "400px",
         overflowY: "auto",
-        backgroundColor: "#f9f9f9",
-        marginBottom: "1rem",
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.5rem",
       }}
     >
       {messages.length === 0 && (
@@ -20,84 +26,84 @@ const ChatWindow = ({ messages }) => {
         <div
           key={index}
           style={{
-            marginBottom: "1rem",
-            textAlign: msg.fromUser ? "right" : "left",
+            alignSelf: msg.fromUser ? "flex-end" : "flex-start",
+            backgroundColor: msg.fromUser ? "#e0ffe0" : "#f0f0f0",
+            padding: "0.5rem 1rem",
+            borderRadius: "10px",
+            maxWidth: "70%",
+            wordWrap: "break-word",
           }}
         >
-          {msg.isAmbulanceAlert && (
-            <div
-              style={{
-                backgroundColor: "#ffdddd",
-                color: "#b30000",
-                border: "2px solid red",
-                borderRadius: "10px",
-                padding: "12px",
-                fontWeight: "bold",
-                maxWidth: "80%",
-                margin: msg.fromUser ? "0 0 0 auto" : "0 auto 0 0",
-              }}
-            >
-              🚨 Emergency! Ambulance needed
-            </div>
-          )}
-            {msg.text && (
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                backgroundColor: msg.fromUser ? "#DCF8C6" : "#EAEAEA",
-                color: "#333",
-                padding: "8px 12px",
-                borderRadius: "15px",
-                maxWidth: "80%",
-                wordWrap: "break-word",
-                margin: 0,
-              }}
-            >
-              {msg.isLink ? (
-                <a
-                  href={msg.text}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    color: "#1a0dab",
-                    textDecoration: "underline",
-                    marginRight: "8px",
-                  }}
-                >
-                  {msg.text}
-                </a>
-              ) : (
-                <span style={{ marginRight: "8px" }}>{msg.text}</span>
-              )}
-
-              {/* כפתור רמקול להקראת הטקסט */}
-              <button
-                onClick={() => speakText(msg.text)}
+          {msg.isPredictedImage ? (
+            <>
+              {msg.text && <p>{msg.text}</p>}{" "}
+              {/* <--- שינוי: מציג את הטקסט אם קיים */}
+              <img
+                src={msg.imageUrl}
+                alt="Predicted Burn"
                 style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "18px",
-                  color: "#555",
+                  maxWidth: "100%",
+                  height: "auto",
+                  borderRadius: "5px",
+                  marginTop: "5px",
                 }}
-                aria-label="Speak message"
-                title="הקש להקראת ההודעה"
-              >
-                🔊
-              </button>
-            </div>
-          )}
-
-          {msg.audioUrl && (
-            <audio
-              controls
-              src={msg.audioUrl}
-              style={{ marginTop: "5px", maxWidth: "80%" }}
-            />
+              />
+            </>
+          ) : msg.isImage ? (
+            <>
+              {msg.text && <p>{msg.text}</p>}
+              <img
+                src={msg.imageUrl}
+                alt="User Upload"
+                style={{
+                  maxWidth: "100%",
+                  height: "auto",
+                  borderRadius: "5px",
+                  marginTop: "5px",
+                }}
+              />
+            </>
+          ) : msg.isAmbulanceAlert ? (
+            <strong style={{ color: "red" }}>{msg.text}</strong>
+          ) : msg.audioUrl ? (
+            <>
+              <audio controls src={msg.audioUrl} />
+              {msg.transcript && (
+                <p style={{ fontSize: "0.8em", color: "#666" }}>
+                  (Transcript: {msg.transcript})
+                </p>
+              )}
+            </>
+          ) : msg.isLink ? (
+            <a href={msg.text} target="_blank" rel="noopener noreferrer">
+              {msg.text}
+            </a>
+          ) : (
+            <>
+              <p>{msg.text}</p>
+              {/* כפתור רמקול להקראת הטקסט - רק אם יש טקסט ולא תמונה */}
+              {msg.text && (
+                <button
+                  onClick={() => speakText(msg.text)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "18px",
+                    color: "#555",
+                    marginLeft: "8px",
+                  }}
+                  aria-label="Speak message"
+                  title="Tap to read the message."
+                >
+                  🔊
+                </button>
+              )}
+            </>
           )}
         </div>
       ))}
+      <div ref={messagesEndRef} />
     </div>
   );
 };

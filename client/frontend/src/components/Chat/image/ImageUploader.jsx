@@ -51,37 +51,39 @@ const ImageUploader = ({ onImageSend }) => {
   //     }
   //   };
   // }, [showCamera]);
-useEffect(() => {
-  if (!showCamera || !videoRef.current) return;
+  useEffect(() => {
+    if (!showCamera || !videoRef.current) return;
 
-  let activeStream = null;
+    let activeStream = null;
 
-  const startStream = async () => {
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
-      videoRef.current.srcObject = mediaStream;
-      setStream(mediaStream);
-      activeStream = mediaStream;  // שמירת הזרם המקומי
-    } catch (err) {
-      console.error("Failed to access camera:", err);
-      alert("Camera access denied or not available.");
-      setShowCamera(false);
-    }
-  };
+    const startStream = async () => {
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+        videoRef.current.srcObject = mediaStream;
+        setStream(mediaStream);
+        activeStream = mediaStream; // שמירת הזרם המקומי
+      } catch (err) {
+        console.error("Failed to access camera:", err);
+        alert("Camera access denied or not available.");
+        setShowCamera(false);
+      }
+    };
 
-  startStream();
+    startStream();
 
-  return () => {
-    if (activeStream) {
-      activeStream.getTracks().forEach(track => track.stop());
-    }
-    setStream(null);
-    if (preview) {
-      URL.revokeObjectURL(preview);
-      setPreview(null);
-    }
-  };
-}, [showCamera, preview]);
+    return () => {
+      if (activeStream) {
+        activeStream.getTracks().forEach((track) => track.stop());
+      }
+      setStream(null);
+      if (preview) {
+        URL.revokeObjectURL(preview);
+        setPreview(null);
+      }
+    };
+  }, [showCamera, preview]);
 
   // טיפול בבחירת קובץ מהמחשב
   const handleFileChange = async (e) => {
@@ -156,10 +158,13 @@ useEffect(() => {
     formData.append("image", fileOrBlob);
 
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/upload-image`, {
-        method: "POST",
-        body: formData,
-      });
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL}/upload-burn-image-faster`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       if (!res.ok) {
         const errorText = await res.text();
@@ -169,23 +174,22 @@ useEffect(() => {
           { text: `Image upload failed: ${errorText}`, fromUser: false },
         ]);
 
-
-         setTreatmentParams({ 
+        setTreatmentParams({
           caseType: "",
           degree: undefined,
           hasImageDiagnosis: false,
           identifiedDegrees: [],
           serverWarning: undefined,
-          resultAwaitingImage: false, 
+          resultAwaitingImage: false,
+          predictedImageBase64: null,
         });
-        setIsFinalDecision(false); 
+        setIsFinalDecision(false);
         setShowImageCapture(true);
         return;
       }
 
       const data = await res.json();
-      console.log("Image uploaded and processed:", data);
-
+      console.log("Image uploaded and processed (Faster R-CNN):", data);
       // let messageText = "";
 
       // if (data.has_decision) {
@@ -201,17 +205,15 @@ useEffect(() => {
       //     data.result ? "Possible type: " + data.result + "." : ""
       //   } Please provide another image for better assessment.`;
       // }
+      const identifiedDegrees = (data.detected_objects || [])
+        .map((obj) => obj.label.replace("degree_", ""))
+        .filter((label) => label !== "__background__");
       let messageText = "";
 
-      if (
-        data.positive_classes_names &&
-        data.positive_classes_names.length > 0
-      ) {
+      if (identifiedDegrees.length > 0) {
         messageText =
           `Detected burn types:\n` +
-          data.positive_classes_names
-            .map((name, idx) => `• ${name}`)
-            .join("\n");
+          identifiedDegrees.map((degree) => `• Degree ${degree}`).join("\n");
         if (data.warning) {
           messageText += `\n\n⚠️ ${data.warning}`;
         }
@@ -221,63 +223,68 @@ useEffect(() => {
           (data.warning ? `Warning: ${data.warning}\n` : "") +
           `Please try uploading another image from a different angle or in better lighting.`;
       }
-
-      setMessages((prev) => [...prev, { text: messageText, fromUser: false }]);
-      // setIsFinalDecision(
-      //   data.positive_classes_names && data.positive_classes_names.length > 0
-      // );
+      setMessages((prev) => [
+        ...prev,
+        { text: messageText, fromUser: false },
+        ...(data.predicted_image_base64
+          ? [
+              {
+                text: "Detected image:",
+                fromUser: false,
+                isPredictedImage: true, // <--- שינוי
+                imageUrl: `data:image/jpeg;base64,${data.predicted_image_base64}`, // <--- שינוי
+              },
+            ]
+          : []),
+      ]);
       setHistory((prev) => [...prev, "🖼️ Image uploaded"]);
 
+      //     if (
+      //       data.positive_classes_names &&
+      //       data.positive_classes_names.length > 0
+      //     ) {
+      //       setTreatmentParams({
+      //         caseType: data.positive_classes_names,
+      //         // במידה ויש צורך בדירוג, צריך להעביר אותו מהשרת (כרגע לא מוגדר)
+      //       });
+      //       setShowImageCapture(false);
+      //     } else {
+      //       setShowImageCapture(true);
+      //     }
 
+      //   } catch (err) {
+      //     console.error("Failed to send image:", err.message);
+      //     setMessages((prev) => [
+      //       ...prev,
+      //       { text: `Image upload failed: ${err.message}`, fromUser: false },
+      //     ]);
+      //   }
+      // };
 
-      
-  //     if (
-  //       data.positive_classes_names &&
-  //       data.positive_classes_names.length > 0
-  //     ) {
-  //       setTreatmentParams({
-  //         caseType: data.positive_classes_names,
-  //         // במידה ויש צורך בדירוג, צריך להעביר אותו מהשרת (כרגע לא מוגדר)
-  //       });
-  //       setShowImageCapture(false);
-  //     } else {
-  //       setShowImageCapture(true);
-  //     }
-
-
-
-
-  //   } catch (err) {
-  //     console.error("Failed to send image:", err.message);
-  //     setMessages((prev) => [
-  //       ...prev,
-  //       { text: `Image upload failed: ${err.message}`, fromUser: false },
-  //     ]);
-  //   }
-  // };
-
-
-const identifiedDegreesFromImage = data.positive_classes_names || [];
+      //const identifiedDegreesFromImage = data.positive_classes_names || [];
 
       const newTreatmentParams = {
-        caseType: "burn",
+        caseType: "burns",
         hasImageDiagnosis: true,
-        identifiedDegrees: identifiedDegreesFromImage,
+        identifiedDegrees: identifiedDegrees,
         degree: undefined,
         serverWarning: data.warning,
-        resultAwaitingImage: data.result && data.result.toLowerCase().includes("awaiting image"),
+        resultAwaitingImage:
+          data.result && data.result.toLowerCase().includes("awaiting image"),
+        predictedImageBase64: data.predicted_image_base64 || null,
       };
       setTreatmentParams(newTreatmentParams);
 
       setIsFinalDecision(
         !data.warning && // אם אין אזהרה, זה נחשב ל"החלטה סופית"
-        !newTreatmentParams.resultAwaitingImage && // אם לא ממתינים לתמונה נוספת
-        identifiedDegreesFromImage.length > 0 // ואם זוהו דרגות
+          !newTreatmentParams.resultAwaitingImage && // אם לא ממתינים לתמונה נוספת
+          identifiedDegrees.length > 0 // ואם זוהו דרגות
       );
 
       // נציג שוב את כפתורי לכידת התמונה רק אם יש אזהרה או אם ממתינים לתמונה נוספת
-      setShowImageCapture(!!data.warning || newTreatmentParams.resultAwaitingImage);
-
+      setShowImageCapture(
+        !!data.warning || newTreatmentParams.resultAwaitingImage
+      );
     } catch (err) {
       console.error("Failed to send image:", err.message);
       setMessages((prev) => [
@@ -292,6 +299,7 @@ const identifiedDegreesFromImage = data.positive_classes_names || [];
         identifiedDegrees: [],
         serverWarning: undefined,
         resultAwaitingImage: false,
+        predictedImageBase64: null,
       });
       setIsFinalDecision(false);
       setShowImageCapture(true);

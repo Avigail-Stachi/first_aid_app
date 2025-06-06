@@ -193,6 +193,7 @@ const ChatPage = () => {
           degree: data.degree ?? undefined, // יהיה קיים רק אם זה לא כוויה
           hasImageDiagnosis: false, // בשלב הטקסטואלי, אין אבחון תמונה
           identifiedDegrees: [], // אין דרגות זוהות מתמונה בשלב זה
+          predictImageBase64: null, // אין תמונה בשלב זה
         });
       }
 
@@ -308,6 +309,7 @@ const ChatPage = () => {
           degree: predictData?.degree ?? undefined,
           hasImageDiagnosis: false,
           identifiedDegrees: [],
+          predictImageBase64: null,
         });
       }
       if (
@@ -328,7 +330,6 @@ const ChatPage = () => {
       setIsLoading(false);
     }
   };
-
 
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", padding: "2rem" }}>
@@ -351,7 +352,7 @@ const ChatPage = () => {
             setMessages((prev) => [
               ...prev,
               {
-                text: `Image uploaded successfully: ${imgURL}`,
+                text: `Image uploaded successfully:`,
                 fromUser: true,
                 isImage: true,
                 imageUrl: imgURL,
