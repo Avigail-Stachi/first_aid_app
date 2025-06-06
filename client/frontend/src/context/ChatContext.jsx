@@ -16,6 +16,7 @@ export const ChatProvider = ({ children }) => {
     degree: undefined, // עבור מקרים שאינם כוויות, או כוויה עם דרגה בודדת מהאבחון הטקסטואלי
     hasImageDiagnosis: false, // האם האבחון האחרון כלל תמונה
     identifiedDegrees: [], // מערך של דרגות כוויה זוהות מהתמונה (לדוגמה: [1, 2])
+    predictImageBase64:null,
   });
   
   const navigate = useNavigate();
@@ -34,6 +35,7 @@ export const ChatProvider = ({ children }) => {
       degree: undefined,
       hasImageDiagnosis: false,
       identifiedDegrees: [],
+      predictImageBase64: null,
     });
     navigate("/chat");
   };
