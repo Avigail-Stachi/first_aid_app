@@ -16,7 +16,7 @@ from pydantic import BaseModel
 import classifier.predict as class_pred
 import contact.sms_sender as sms_sender
 import transcribe.transcribeOffline as transcribeOffline
-import classifier.predict_photo as class_pred_photo
+#import classifier.predict_photo as class_pred_photo
 from data.traet.treatment_db_manager import get_treatment_data
 import classifier.infer_burn_degree_faster as predict_with_faster
 # from typing import Dict
@@ -263,52 +263,74 @@ async def upload_burn_image_faster(image: UploadFile = File(...)):
         print(f"שגיאה בעיבוד תמונה עם Faster R-CNN: {e}")
         raise HTTPException(status_code=500, detail=f"שגיאה בעיבוד התמונה: {str(e)}")
 
+
 @app.get("/treatment")
 async def get_treatment(
-    case_type: str = Query(..., description="Type of emergency case"),
-    count: int = Query(..., ge=0, le=3, description="0=short, 1=detailed, 2=image, 3=video"),
-    degrees: Optional[str] = Query(None, description="Comma-separated list of severity degrees (e.g., '1', '1,2')"),
-    degree: Optional[int] = Query(None,description="Severity degree (e.g., 1, 2, 3) for non-burn cases or single burn degree")
+        case_type: str = Query(..., description="Type of emergency case"),
+        count: int = Query(..., ge=0, le=3, description="0=short, 1=detailed, 2=image, 3=video"),
+        degrees: Optional[str] = Query(None, description="Comma-separated list of severity degrees (e.g., '1', '1,2')"),
+        degree: Optional[int] = Query(None,
+                                      description="Severity degree (e.g., 1, 2, 3) for non-burn cases or single burn degree")
 ):
     try:
         if case_type.lower() == "burns" and degrees:
             degrees_list = [d.strip() for d in degrees.split(',') if d.strip()]
-            result = get_treatment_data(case_type, count, degrees=degrees_list)
+            result_data = get_treatment_data(case_type, count, degrees=degrees_list)
         elif case_type.lower() != "burns" and degree is not None:
-            result = get_treatment_data(case_type, count, degree=degree)
-        else:  # מקרה ברירת מחדל או אם אין דרגות ספציפיות
-            result = get_treatment_data(case_type, count)
+            result_data = get_treatment_data(case_type, count, degree=degree)
+        else:
+            result_data = get_treatment_data(case_type, count)
 
-        if result is None:
-            raise HTTPException(status_code=404, detail="No treatment data found for the given parameters.")
+        if result_data is None:
+            result_data = []
 
-        if isinstance(result, dict) and result.get("type") in ["image", "video"]:
-            file_path = result.get("url")
-            if not file_path or not os.path.exists(file_path):
-                raise HTTPException(status_code=404, detail=f"File not found at absolute path: {file_path}")
+        formatted_results = []
+        for item in result_data:
 
-            media_type = "application/octet-stream"
-            if file_path.lower().endswith((".jpg", ".jpeg")):
-                media_type = "image/jpeg"
-            elif file_path.lower().endswith((".png")):
-                media_type = "image/png"
-            elif file_path.lower().endswith((".gif")):
-                media_type = "image/gif"
-            elif file_path.lower().endswith((".mp4")):
-                media_type = "video/mp4"
-            elif file_path.lower().endswith((".mov")):
-                media_type = "video/quicktime"
-            elif file_path.lower().endswith((".webm")):
-                media_type = "video/webm"
 
-            return FileResponse(path=file_path, media_type=media_type)
+            formatted_item = {
+                "case_type": item.get("case_type"),
+                "degree": item.get("degree"),
+                "short_instruction": item.get("short_instruction"),
+                "detailed_instruction": item.get("detailed_instruction"),
+                "image_url": item.get("image_url"),
+                "video_url": item.get("video_url")
+            }
+            formatted_results.append(formatted_item)
 
-        return {"result": result}
+
+        if len(formatted_results) == 1 and (count == 2 or count == 3):
+            item = formatted_results[0]
+            file_path = None
+            if count == 2:
+                file_path = item.get("image_url")
+            elif count == 3:
+                file_path = item.get("video_url")
+
+            if file_path and os.path.exists(file_path):
+                media_type = "application/octet-stream"
+                if file_path.lower().endswith((".jpg", ".jpeg")):
+                    media_type = "image/jpeg"
+                elif file_path.lower().endswith((".png")):
+                    media_type = "image/png"
+                elif file_path.lower().endswith((".gif")):
+                    media_type = "image/gif"
+                elif file_path.lower().endswith((".mp4")):
+                    media_type = "video/mp4"
+                elif file_path.lower().endswith((".mov")):
+                    media_type = "video/quicktime"
+                elif file_path.lower().endswith((".webm")):
+                    media_type = "video/webm"
+                return FileResponse(path=file_path, media_type=media_type)
+            return {"result": formatted_results}
+
+        return {"result": formatted_results}
+
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        print(f"Server error in /treatment: {e}")
-        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+        print(f"שגיאת שרת ב-/treatment: {e}")
+        raise HTTPException(status_code=500, detail=f"שגיאת שרת: {str(e)}")
 
 
 # @app.post("/upload-image")
