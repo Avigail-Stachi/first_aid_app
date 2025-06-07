@@ -4,7 +4,7 @@ import time
 import shutil
 import base64
 
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 #from debugpy.common.log import warning
 from fastapi import FastAPI, Request, HTTPException, File, UploadFile,Query
@@ -264,6 +264,8 @@ async def upload_burn_image_faster(image: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"שגיאה בעיבוד התמונה: {str(e)}")
 
 
+# main.py - רק החלק של האנדפוינט /treatment המתוקן לנתיבים מוחלטים ב-DB
+
 @app.get("/treatment")
 async def get_treatment(
         case_type: str = Query(..., description="Type of emergency case"),
@@ -275,19 +277,17 @@ async def get_treatment(
     try:
         if case_type.lower() == "burns" and degrees:
             degrees_list = [d.strip() for d in degrees.split(',') if d.strip()]
-            result_data = get_treatment_data(case_type, count, degrees=degrees_list)
+            result_data = await get_treatment_data(case_type, count, degrees=degrees_list)
         elif case_type.lower() != "burns" and degree is not None:
-            result_data = get_treatment_data(case_type, count, degree=degree)
+            result_data = await get_treatment_data(case_type, count, degree=degree)
         else:
-            result_data = get_treatment_data(case_type, count)
+            result_data = await get_treatment_data(case_type, count)
 
         if result_data is None:
             result_data = []
 
         formatted_results = []
         for item in result_data:
-
-
             formatted_item = {
                 "case_type": item.get("case_type"),
                 "degree": item.get("degree"),
@@ -298,30 +298,30 @@ async def get_treatment(
             }
             formatted_results.append(formatted_item)
 
-
         if len(formatted_results) == 1 and (count == 2 or count == 3):
             item = formatted_results[0]
-            file_path = None
+            file_path_from_db = None
             if count == 2:
-                file_path = item.get("image_url")
+                file_path_from_db = item.get("image_url")
             elif count == 3:
-                file_path = item.get("video_url")
+                file_path_from_db = item.get("video_url")
 
-            if file_path and os.path.exists(file_path):
+            if file_path_from_db and os.path.exists(file_path_from_db):
                 media_type = "application/octet-stream"
-                if file_path.lower().endswith((".jpg", ".jpeg")):
+                if file_path_from_db.lower().endswith((".jpg", ".jpeg")):
                     media_type = "image/jpeg"
-                elif file_path.lower().endswith((".png")):
+                elif file_path_from_db.lower().endswith((".png")):
                     media_type = "image/png"
-                elif file_path.lower().endswith((".gif")):
+                elif file_path_from_db.lower().endswith((".gif")):
                     media_type = "image/gif"
-                elif file_path.lower().endswith((".mp4")):
+                elif file_path_from_db.lower().endswith((".mp4")):
                     media_type = "video/mp4"
-                elif file_path.lower().endswith((".mov")):
+                elif file_path_from_db.lower().endswith((".mov")):
                     media_type = "video/quicktime"
-                elif file_path.lower().endswith((".webm")):
+                elif file_path_from_db.lower().endswith((".webm")):
                     media_type = "video/webm"
-                return FileResponse(path=file_path, media_type=media_type)
+                return FileResponse(path=file_path_from_db, media_type=media_type)
+
             return {"result": formatted_results}
 
         return {"result": formatted_results}
@@ -331,8 +331,6 @@ async def get_treatment(
     except Exception as e:
         print(f"שגיאת שרת ב-/treatment: {e}")
         raise HTTPException(status_code=500, detail=f"שגיאת שרת: {str(e)}")
-
-
 # @app.post("/upload-image")
 # async def upload_image(image: UploadFile = File(...)):
 #     try:
