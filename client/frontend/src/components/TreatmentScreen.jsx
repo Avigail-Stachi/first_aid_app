@@ -306,120 +306,124 @@ import { useSearchParams, useNavigate} from "react-router-dom";
 import { ChatContext } from "../context/ChatContext";
 import { speakText } from "./speech";
 
-// זו קומפוננטת המשנה שאחראית על שליפת והצגת הוראה בודדת או מספר הוראות
-// שיניתי את שמה מ-TreatmentInstructions ל-TreatmentInstructionsDisplay כדי למנוע בלבול
 const TreatmentInstructionsDisplay = ({ caseType, degree, degrees, currentCount }) => {
-  const [instruction, setInstruction] = useState("Loading treatment instructions...");
+  const [instructionData, setInstructionData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const fetchInstructions = useCallback(
-    async (type, deg, degreesParam, count) => { // נוספו degreesParam
+    async (type, deg, degreesParam, count) => {
       setIsLoading(true);
       setError(null);
       try {
         let url = `${process.env.REACT_APP_API_URL}/treatment?case_type=${encodeURIComponent(type)}&count=${count}`;
-        
-        // כאן ההבדל העיקרי:
-        // אם זה כוויה והתקבלה "degreesParam" (לדוגמה "all" או "1,2") - נשלח את זה לשרת
+
         if (type.toLowerCase().includes("burn") && degreesParam) {
           url += `&degrees=${encodeURIComponent(degreesParam)}`;
-        } 
-        // אחרת, אם יש "deg" (עבור מקרים שאינם כוויות או כוויה ספציפית בודדת) - נשלח אותו
-        else if (deg !== undefined && deg !== null) {
+        } else if (deg !== undefined && deg !== null) {
           url += `&degree=${deg}`;
         }
 
-        console.log("TreatmentScreen - Fetching URL:", url); // חשוב: נראה איזה URL נשלח
+        console.log("TreatmentScreen - Fetching URL:", url);
 
         const res = await fetch(url);
         if (!res.ok) {
           const errorData = await res.json();
-          throw new Error(errorData.detail || `HTTP error! status: ${res.status}`);
+          throw new Error(errorData.detail || `HTTP error! Status: ${res.status}`); // Changed message
         }
+        
         const data = await res.json();
-        // השרת יכול להחזיר מערך של הוראות (עבור "all") או אובייקט בודד
-        setInstruction(data.result || data || "No further information available."); 
+        setInstructionData(data.result); 
       } catch (err) {
-        console.error("Failed to fetch treatment instructions:", err);
-        setError(`Error loading treatment instructions: ${err.message}`);
-        setInstruction("An error occurred while loading information.");
+        console.error("Failed to fetch treatment instructions:", err); // Changed message
+        setError(`Error loading treatment instructions: ${err.message}`); // Changed message
+        setInstructionData(null);
       } finally {
         setIsLoading(false);
       }
     },
-    [] 
+    []
   );
 
   useEffect(() => {
-    // מפעילים את הפונקציה כשפרמטרים משתנים
     fetchInstructions(caseType, degree, degrees, currentCount);
-  }, [caseType, degree, degrees, currentCount, fetchInstructions]); 
+  }, [caseType, degree, degrees, currentCount, fetchInstructions]);
 
   if (isLoading) {
-    return <div>Loading treatment instructions...</div>;
+    return <div>Loading treatment instructions...</div>; // Changed message
   }
 
   if (error) {
     return <div style={{ color: "red" }}>{error}</div>;
   }
 
-  // לוגיקה להצגת התוכן:
-  // אם השרת החזיר מערך של הוראות (כמו עבור "all" בכוויות), נעבור עליהן בלולאה
-  if (Array.isArray(instruction)) {
-    return (
-      <div>
-        {instruction.map((item, index) => (
-          <div key={index} style={{ marginBottom: "1rem", borderBottom: "1px dashed #ccc", paddingBottom: "1rem" }}>
-            {item.title && <h3>{item.title}</h3>}
-            {typeof item.description === "string" && <p>{item.description}</p>}
-            {item.image_url && <img src={item.image_url} alt={item.title || "Treatment visual"} style={{ maxWidth: "100%", height: "auto" }} />}
-            {item.video_url && <video controls style={{ maxWidth: "100%", height: "auto" }}><source src={item.video_url} type="video/mp4" />Your browser does not support video.</video>}
-          </div>
-        ))}
-      </div>
-    );
-  } 
-  // אם השרת החזיר מחרוזת (הוראה בודדת)
-  else if (typeof instruction === "string") {
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <p style={{ flex: 1 }}>{instruction}</p>
-        {(currentCount === 0 || currentCount === 1) && (
-          <button
-            onClick={() => speakText(instruction)}
-            title="Read aloud"
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "1.2rem"
-            }}
-          >
-            🔊
-          </button>
-        )}
-      </div>
-    );
-  } 
-  // אם השרת החזיר אובייקט עם type: "image" או "video"
-  else if (instruction && instruction.type === "image") {
-    return (
-      <img
-        src={instruction.url}
-        alt="treatment visual"
-        style={{ maxWidth: "100%", height: "auto" }}
-      />
-    );
-  } else if (instruction && instruction.type === "video") {
-    return (
-      <video controls style={{ maxWidth: "100%", height: "auto" }}>
-        <source src={instruction.url} type="video/mp4" />
-        Your browser does not support video.
-      </video>
-    );
+  if (!instructionData || !Array.isArray(instructionData) || instructionData.length === 0) {
+    return <p>No further information available for this step.</p>; // Changed message
   }
-  return <p>No further information available.</p>;
+
+  return (
+    <div>
+      {instructionData.map((item, index) => {
+        const titleSuffix = item.degree !== null ? ` Degree ${item.degree}` : ""; // Changed message
+        const itemTitle = `${item.case_type}${titleSuffix}`;
+        
+        let contentToDisplay = null;
+        let speakableText = "";
+
+        if (currentCount === 0) { // Short instruction
+          speakableText = item.short_instruction;
+          contentToDisplay = <p>{item.short_instruction || "No short instruction available."}</p>; // Changed message
+        } else if (currentCount === 1) { // Detailed instruction
+          speakableText = item.detailed_instruction;
+          contentToDisplay = <p>{item.detailed_instruction || "No detailed instruction available."}</p>; // Changed message
+        } else if (currentCount === 2) { // Image
+          if (item.image_url) {
+            contentToDisplay = (
+              <img
+                src={item.image_url}
+                alt={itemTitle || "Treatment image"} // Changed message
+                style={{ maxWidth: "100%", height: "auto" }}
+              />
+            );
+          } else {
+            contentToDisplay = <p>No image available for this step.</p>; // Changed message
+          }
+        } else if (currentCount === 3) { // Video
+          if (item.video_url) {
+            contentToDisplay = (
+              <video controls style={{ maxWidth: "100%", height: "auto" }}>
+                <source src={item.video_url} type="video/mp4" />
+                Your browser does not support video. {/* This message is standard browser text */}
+              </video>
+            );
+          } else {
+            contentToDisplay = <p>No video available for this step.</p>; // Changed message
+          }
+        }
+
+        return (
+          <div key={index} style={{ marginBottom: "1rem", borderBottom: "1px dashed #ccc", paddingBottom: "1rem" }}>
+            {itemTitle && <h3>{itemTitle}</h3>}
+            {contentToDisplay}
+            {(currentCount === 0 || currentCount === 1) && speakableText && (
+              <button
+                onClick={() => speakText(speakableText)}
+                title="Read aloud" // Changed message
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "1.2rem"
+                }}
+              >
+                🔊
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 };
 
 export default function TreatmentScreen() {
@@ -428,18 +432,15 @@ export default function TreatmentScreen() {
   const { newChat } = useContext(ChatContext);
 
   const initialCaseType = searchParams.get("case_type") || "";
-  const initialDegreesParam = searchParams.get("degrees"); // יכול להיות "all" או "1,2"
-  const initialDegree = searchParams.get("degree"); // עבור מקרים שאינם כוויות
+  const initialDegreesParam = searchParams.get("degrees");
+  const initialDegree = searchParams.get("degree");
 
   const currentCount = parseInt(searchParams.get("count") || "0", 10);
-
-  // אין צורך ב-burnDegreesToShow יותר - לא עושים לולאה ב-Frontend!
-  // ה-TreatmentInstructionsDisplay תבקש את הכל מהשרת בבת אחת.
 
   const handleNotUnderstood = useCallback(() => {
     setSearchParams((prevSearchParams) => {
       const newCount = parseInt(prevSearchParams.get("count") || "0", 10) + 1;
-      if (newCount <= 3) {
+      if (newCount <= 3) { 
         prevSearchParams.set("count", newCount.toString());
       }
       return prevSearchParams;
@@ -452,57 +453,36 @@ export default function TreatmentScreen() {
 
   return (
     <div style={{ maxWidth: 600, margin: "2rem auto", padding: "1rem", border: "1px solid #eee", borderRadius: "8px" }}>
-      <h2>Treatment Page</h2>
+      <h2>Treatment Page</h2> {/* Changed message */}
 
       {!initialCaseType && (
         <p style={{ color: "gray" }}>
-          Treatment instructions cannot be provided as no diagnosis was made. Please return to the chat and describe the emergency.
+          Treatment instructions cannot be provided as no diagnosis was made. Please return to the chat and describe the emergency. {/* Changed message */}
         </p>
       )}
 
       {initialCaseType && (
-        initialCaseType.toLowerCase().includes("burn") ? (
-          // אם זה כוויה, נשתמש ב-initialDegreesParam (שיכול להיות "all" או "1,2")
-          // ונשלח אותו לקומפוננטת התצוגה.
-          // ה-TreatmentInstructionsDisplay תעשה את הבקשה לשרת פעם אחת.
-          <div>
-            <h3>Treatment for Burns</h3>
-            <TreatmentInstructionsDisplay 
-              caseType={initialCaseType}
-              degrees={initialDegreesParam} // מעבירים את הפרמטר "degrees" כמו שהוא
-              currentCount={currentCount}
-            />
-            <button
-              onClick={handleNotUnderstood}
-              disabled={currentCount >= 3}
-              style={{ marginTop: "0.5rem", marginBottom: "1rem" }}
-            >
-              I didn't understand (Next step)
-            </button>
-          </div>
-        ) : (
-          // עבור מקרים שאינם כוויות, זה נשאר כמעט אותו דבר
-          <div>
-            <h3>Treatment for {initialCaseType}</h3>
-            <TreatmentInstructionsDisplay 
-              caseType={initialCaseType}
-              degree={initialDegree} 
-              currentCount={currentCount}
-            />
-            <button
-              onClick={handleNotUnderstood}
-              disabled={currentCount >= 3}
-              style={{ marginTop: "0.5rem", marginBottom: "1rem" }}
-            >
-              I didn't understand (Next step)
-            </button>
-          </div>
-        )
+        <div>
+          <h3>Treatment for {initialCaseType}</h3> {/* Changed message */}
+          <TreatmentInstructionsDisplay 
+            caseType={initialCaseType}
+            degrees={initialDegreesParam}
+            degree={initialDegree}
+            currentCount={currentCount}
+          />
+          <button
+            onClick={handleNotUnderstood}
+            disabled={currentCount >= 3} 
+            style={{ marginTop: "0.5rem", marginBottom: "1rem" }}
+          >
+            I didn't understand (Next step) {/* Changed message */}
+          </button>
+        </div>
       )}
 
       <hr style={{ margin: "2rem 0" }} />
-      <button onClick={handleBackToChat}>Back to Chat</button>
-      <button onClick={newChat} style={{ marginLeft: "1rem" }}>Start New Chat</button>
+      <button onClick={handleBackToChat}>Back to Chat</button> {/* Changed message */}
+      <button onClick={newChat} style={{ marginLeft: "1rem" }}>Start New Chat</button> {/* Changed message */}
     </div>
   );
 }
