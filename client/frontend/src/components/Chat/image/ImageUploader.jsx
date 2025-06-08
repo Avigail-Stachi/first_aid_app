@@ -1,3 +1,5 @@
+
+
 import React, { useRef, useState, useEffect, useContext } from "react";
 import { ChatContext } from "../../../context/ChatContext";
 
@@ -7,50 +9,19 @@ const ImageUploader = ({ onImageSend }) => {
   const canvasRef = useRef(null);
 
   const [preview, setPreview] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
   const [showCamera, setShowCamera] = useState(false);
   const [stream, setStream] = useState(null);
+  const [isSending, setIsSending] = useState(false);
 
   const {
     setMessages,
     setIsFinalDecision,
     setTreatmentParams,
     setShowImageCapture,
-    //history,
     setHistory,
   } = useContext(ChatContext);
 
-  // התחלת זרם המצלמה כשמציגים את הוידאו
-  // useEffect(() => {
-  //   const startStream = async () => {
-  //     if (!showCamera || !videoRef.current) return;
-
-  //     try {
-  //       const mediaStream = await navigator.mediaDevices.getUserMedia({
-  //         video: true,
-  //       });
-  //       videoRef.current.srcObject = mediaStream;
-  //       setStream(mediaStream);
-  //     } catch (err) {
-  //       console.error("Failed to access camera:", err);
-  //       alert("Camera access denied or not available.");
-  //       setShowCamera(false);
-  //     }
-  //   };
-
-  //   startStream();
-
-  //   // ניקוי הזרם והpreview כשמתפרקים או כש-showCamera משתנה
-  //   return () => {
-  //     if (stream) {
-  //       stream.getTracks().forEach((track) => track.stop());
-  //       setStream(null);
-  //     }
-  //     if (preview) {
-  //       URL.revokeObjectURL(preview);
-  //       setPreview(null);
-  //     }
-  //   };
-  // }, [showCamera]);
   useEffect(() => {
     if (!showCamera || !videoRef.current) return;
 
@@ -63,7 +34,7 @@ const ImageUploader = ({ onImageSend }) => {
         });
         videoRef.current.srcObject = mediaStream;
         setStream(mediaStream);
-        activeStream = mediaStream; // שמירת הזרם המקומי
+        activeStream = mediaStream;
       } catch (err) {
         console.error("Failed to access camera:", err);
         alert("Camera access denied or not available.");
@@ -78,27 +49,25 @@ const ImageUploader = ({ onImageSend }) => {
         activeStream.getTracks().forEach((track) => track.stop());
       }
       setStream(null);
-      if (preview) {
+      if (preview && !imageFile) {
         URL.revokeObjectURL(preview);
         setPreview(null);
       }
     };
-  }, [showCamera, preview]);
+  }, [showCamera, imageFile, preview]);
 
-  // טיפול בבחירת קובץ מהמחשב
-  const handleFileChange = async (e) => {
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // ניקוי קישור preview קודם
     if (preview) {
       URL.revokeObjectURL(preview);
     }
 
     const imageUrl = URL.createObjectURL(file);
     setPreview(imageUrl);
-
-    await sendImageToServer(file, imageUrl);
+    setImageFile(file);
+    stopCamera();
   };
 
   const handleOpenFileDialog = () => {
@@ -106,10 +75,12 @@ const ImageUploader = ({ onImageSend }) => {
   };
 
   const handleStartCamera = () => {
+    if (preview) URL.revokeObjectURL(preview);
+    setPreview(null);
+    setImageFile(null);
     setShowCamera(true);
   };
 
-  // צילום תמונה מהוידאו
   const handleTakePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
 
@@ -128,7 +99,6 @@ const ImageUploader = ({ onImageSend }) => {
         return;
       }
 
-      // ניקוי preview קודם
       if (preview) {
         URL.revokeObjectURL(preview);
       }
@@ -137,7 +107,7 @@ const ImageUploader = ({ onImageSend }) => {
       const imageUrl = URL.createObjectURL(blob);
 
       setPreview(imageUrl);
-      await sendImageToServer(file, imageUrl);
+      setImageFile(file);
       stopCamera();
     }, "image/jpeg");
   };
@@ -150,12 +120,16 @@ const ImageUploader = ({ onImageSend }) => {
     setShowCamera(false);
   };
 
-  // שליחת התמונה לשרת ועיבוד התגובה
-  const sendImageToServer = async (fileOrBlob, previewUrl) => {
-    onImageSend(previewUrl);
+  const handleSendImage = async () => {
+    if (!imageFile) {
+      alert("Please select or capture an image first.");
+      return;
+    }
+    setIsSending(true);
+    onImageSend(preview);
 
     const formData = new FormData();
-    formData.append("image", fileOrBlob);
+    formData.append("image", imageFile);
 
     try {
       const res = await fetch(
@@ -166,8 +140,11 @@ const ImageUploader = ({ onImageSend }) => {
         }
       );
 
+      const data = await res.json();
+      console.log("Image uploaded and processed (Faster R-CNN):", data);
+
       if (!res.ok) {
-        const errorText = await res.text();
+        const errorText = data.detail || "Unknown error";
         console.error("Image upload error:", errorText);
         setMessages((prev) => [
           ...prev,
@@ -185,26 +162,14 @@ const ImageUploader = ({ onImageSend }) => {
         });
         setIsFinalDecision(false);
         setShowImageCapture(true);
+        if (preview) {
+          URL.revokeObjectURL(preview);
+          setPreview(null);
+          setImageFile(null);
+        }
         return;
       }
 
-      const data = await res.json();
-      console.log("Image uploaded and processed (Faster R-CNN):", data);
-      // let messageText = "";
-
-      // if (data.has_decision) {
-      //   if (Array.isArray(data.result)) {
-      //     messageText =
-      //       `Detected ${data.result.length} injuries:\n` +
-      //       data.result.map((item) => `• ${item.type} (Degree ${item.degree})`).join("\n");
-      //   } else {
-      //     messageText = `Detected injury: ${data.result} ${data.degree ? `(Degree ${data.degree})` : ""}`;
-      //   }
-      // } else {
-      //   messageText = `Uncertain result. ${
-      //     data.result ? "Possible type: " + data.result + "." : ""
-      //   } Please provide another image for better assessment.`;
-      // }
       const identifiedDegrees = (data.detected_objects || [])
         .map((obj) => obj.label.replace("degree_", ""))
         .filter((label) => label !== "__background__");
@@ -231,13 +196,185 @@ const ImageUploader = ({ onImageSend }) => {
               {
                 text: "Detected image:",
                 fromUser: false,
-                isPredictedImage: true, // <--- שינוי
-                imageUrl: `data:image/jpeg;base64,${data.predicted_image_base64}`, // <--- שינוי
+                isPredictedImage: true,
+                imageUrl: `data:image/jpeg;base64,${data.predicted_image_base64}`,
               },
             ]
           : []),
       ]);
       setHistory((prev) => [...prev, "🖼️ Image uploaded"]);
+
+      const newTreatmentParams = {
+        caseType: "burns",
+        hasImageDiagnosis: true,
+        identifiedDegrees: identifiedDegrees,
+        degree: undefined,
+        serverWarning: data.warning,
+        resultAwaitingImage:
+          data.result && data.result.toLowerCase().includes("awaiting image"),
+        predictedImageBase64: data.predicted_image_base64 || null,
+      };
+      setTreatmentParams(newTreatmentParams);
+
+      setIsFinalDecision(
+        !data.warning &&
+          !newTreatmentParams.resultAwaitingImage &&
+          identifiedDegrees.length > 0
+      );
+
+      setShowImageCapture(
+        !!data.warning || newTreatmentParams.resultAwaitingImage
+      );
+      if (preview) {
+        URL.revokeObjectURL(preview);
+        setPreview(null);
+        setImageFile(null);
+      }
+    } catch (err) {
+      console.error("Failed to send image:", err.message);
+      setMessages((prev) => [
+        ...prev,
+        { text: `Image upload failed: ${err.message}`, fromUser: false },
+      ]);
+
+      setTreatmentParams({
+        caseType: "",
+        degree: undefined,
+        hasImageDiagnosis: false,
+        identifiedDegrees: [],
+        serverWarning: undefined,
+        resultAwaitingImage: false,
+        predictedImageBase64: null,
+      });
+      setIsFinalDecision(false);
+      setShowImageCapture(true);
+      if (preview) {
+        URL.revokeObjectURL(preview);
+        setPreview(null);
+        setImageFile(null);
+      }
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleCancelPreview = () => {
+    if (preview) {
+      URL.revokeObjectURL(preview);
+    }
+    setPreview(null);
+    setImageFile(null);
+    setShowImageCapture(true);
+  };
+
+  return (
+    <div
+      style={{
+        padding: "10px",
+        border: "1px solid #ccc",
+        borderRadius: "8px",
+        marginTop: "15px",
+      }}
+    >
+      <h3>Upload/Capture Image</h3>
+      <button onClick={handleOpenFileDialog} disabled={showCamera || isSending}>
+        📁 Upload from Computer
+      </button>
+      <button
+        onClick={handleStartCamera}
+        disabled={showCamera || isSending}
+        style={{ marginLeft: "10px" }}
+      >
+        📷 Take a Picture
+      </button>
+
+      <input
+        type="file"
+        accept="image/*"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+        disabled={isSending}
+      />
+
+      {showCamera && (
+        <div style={{ marginTop: "15px" }}>
+          <video
+            ref={videoRef}
+            autoPlay
+            style={{
+              width: "100%",
+              maxWidth: "400px",
+              border: "1px solid #ddd",
+              borderRadius: "4px",
+            }}
+          />
+          <button onClick={handleTakePhoto} disabled={isSending} style={{ marginTop: "10px" }}>
+            📸 Capture
+          </button>
+          <button onClick={stopCamera} disabled={isSending} style={{ marginLeft: "10px" }}>
+            ✖️ Cancel Camera
+          </button>
+        </div>
+      )}
+
+      <canvas ref={canvasRef} style={{ display: "none" }} />
+
+      {preview && (
+        <div
+          style={{
+            marginTop: "1rem",
+            border: "1px solid #eee",
+            padding: "10px",
+            borderRadius: "8px",
+          }}
+        >
+          <strong>Preview:</strong>
+          <br />
+          <img
+            src={preview}
+            alt="Preview"
+            style={{
+              maxWidth: "100%",
+              height: "auto",
+              display: "block",
+              margin: "10px 0",
+            }}
+          />
+          <button onClick={handleSendImage} disabled={isSending} style={{ marginTop: "10px" }}>
+            {isSending ? "Sending..." : "📩 Send Image"}
+          </button>
+          <button
+            onClick={handleCancelPreview}
+            disabled={isSending}
+            style={{ marginLeft: "10px", marginTop: "10px" }}
+          >
+            🗑️ Cancel Preview
+          </button>
+        </div>
+      )}
+      {isSending && <p>Uploading and processing image...</p>}
+    </div>
+  );
+};
+
+export default ImageUploader;
+      // let messageText = "";
+
+      // if (data.has_decision) {
+      //   if (Array.isArray(data.result)) {
+      //     messageText =
+      //       `Detected ${data.result.length} injuries:\n` +
+      //       data.result.map((item) => `• ${item.type} (Degree ${item.degree})`).join("\n");
+      //   } else {
+      //     messageText = `Detected injury: ${data.result} ${data.degree ? `(Degree ${data.degree})` : ""}`;
+      //   }
+      // } else {
+      //   messageText = `Uncertain result. ${
+      //     data.result ? "Possible type: " + data.result + "." : ""
+      //   } Please provide another image for better assessment.`;
+      // }
+      
 
       //     if (
       //       data.positive_classes_names &&
@@ -263,48 +400,7 @@ const ImageUploader = ({ onImageSend }) => {
 
       //const identifiedDegreesFromImage = data.positive_classes_names || [];
 
-      const newTreatmentParams = {
-        caseType: "burns",
-        hasImageDiagnosis: true,
-        identifiedDegrees: identifiedDegrees,
-        degree: undefined,
-        serverWarning: data.warning,
-        resultAwaitingImage:
-          data.result && data.result.toLowerCase().includes("awaiting image"),
-        predictedImageBase64: data.predicted_image_base64 || null,
-      };
-      setTreatmentParams(newTreatmentParams);
-
-      setIsFinalDecision(
-        !data.warning && // אם אין אזהרה, זה נחשב ל"החלטה סופית"
-          !newTreatmentParams.resultAwaitingImage && // אם לא ממתינים לתמונה נוספת
-          identifiedDegrees.length > 0 // ואם זוהו דרגות
-      );
-
-      // נציג שוב את כפתורי לכידת התמונה רק אם יש אזהרה או אם ממתינים לתמונה נוספת
-      setShowImageCapture(
-        !!data.warning || newTreatmentParams.resultAwaitingImage
-      );
-    } catch (err) {
-      console.error("Failed to send image:", err.message);
-      setMessages((prev) => [
-        ...prev,
-        { text: `Image upload failed: ${err.message}`, fromUser: false },
-      ]);
-      // עדכון treatmentParams במקרה של כשל כללי בשליחה
-      setTreatmentParams({
-        caseType: "",
-        degree: undefined,
-        hasImageDiagnosis: false,
-        identifiedDegrees: [],
-        serverWarning: undefined,
-        resultAwaitingImage: false,
-        predictedImageBase64: null,
-      });
-      setIsFinalDecision(false);
-      setShowImageCapture(true);
-    }
-  };
+    
 
   //     if (data.has_decision) {
   //       if (Array.isArray(data.result)) {
@@ -348,44 +444,51 @@ const ImageUploader = ({ onImageSend }) => {
   //   }
   // };
 
-  return (
-    <div>
-      <button onClick={handleOpenFileDialog}>📁 Upload from Computer</button>
-      <button onClick={handleStartCamera}>📷 Take a Picture</button>
+//   return (
+//     <div>
+//       <button onClick={handleOpenFileDialog}>📁 Upload from Computer</button>
+//       <button onClick={handleStartCamera}>📷 Take a Picture</button>
 
-      <input
-        type="file"
-        accept="image/*"
-        ref={fileInputRef}
-        style={{ display: "none" }}
-        onChange={handleFileChange}
-      />
+//       <input
+//         type="file"
+//         accept="image/*"
+//         ref={fileInputRef}
+//         style={{ display: "none" }}
+//         onChange={handleFileChange}
+//       />
 
-      {showCamera && (
-        <div>
-          <video
-            ref={videoRef}
-            autoPlay
-            style={{ width: "100%", maxWidth: "400px" }}
-          />
-          <button onClick={handleTakePhoto}>📸 Capture</button>
-          <button onClick={stopCamera} style={{ marginLeft: "10px" }}>
-            ✖️ Cancel
-          </button>
-        </div>
-      )}
+//       {showCamera && (
+//         <div>
+//           <video
+//             ref={videoRef}
+//             autoPlay
+//             style={{ width: "100%", maxWidth: "400px" }}
+//           />
+//           <button onClick={handleTakePhoto}>📸 Capture</button>
+//           <button onClick={stopCamera} style={{ marginLeft: "10px" }}>
+//             ✖️ Cancel
+//           </button>
+//         </div>
+//       )}
 
-      <canvas ref={canvasRef} style={{ display: "none" }} />
+//       <canvas ref={canvasRef} style={{ display: "none" }} />
 
-      {preview && (
-        <div style={{ marginTop: "1rem" }}>
-          <strong>Preview:</strong>
-          <br />
-          <img src={preview} alt="Preview" style={{ maxWidth: "100%" }} />
-        </div>
-      )}
-    </div>
-  );
-};
+//       {preview && (
+// <div
+//           style={{
+//             marginTop: "1rem",
+//             border: "1px solid #eee",
+//             padding: "10px",
+//             borderRadius: "8px",
+//           }}
+//         >          <strong>Preview:</strong>
+//           <br />
+//           <img src={preview} alt="Preview" style={{ maxWidth: "100%" }} />
+//         </div>
+//       )}
+//        {isSending && <p>Uploading and processing image...</p>}
+//     </div>
+//   );
+// };
 
-export default ImageUploader;
+// export default ImageUploader;

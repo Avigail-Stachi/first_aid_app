@@ -54,9 +54,9 @@ def load_inference_model():
             _loaded_model = model
             print(f"המודל נטען בהצלחה מ-{MODEL_PATH} והוגדר למצב הערכה.")
         except FileNotFoundError:
-            raise FileNotFoundError(f"שגיאה: קובץ המודל {MODEL_PATH} לא נמצא. אנא וודא שהקובץ קיים.")
+            raise FileNotFoundError(f"Error: Model file {MODEL_PATH} not found. Please ensure the file exists.")
         except Exception as e:
-            raise RuntimeError(f"שגיאה בטעינת המודל: {e}")
+            raise RuntimeError(f"Error loading the model: {e}")
     return _loaded_model
 
 
@@ -64,7 +64,8 @@ def load_inference_model():
 def predict_on_image(image_path: str, output_dir: str, score_threshold: float = 0.4):
 
     if _loaded_model is None:
-        raise RuntimeError("המודל לא טעון. אנא קרא לפונקציה load_inference_model() תחילה.")
+        raise RuntimeError("Model is not loaded. Please call the load_inference_model() function first.")
+
 
     img_orig = Image.open(image_path).convert("RGB")
 
