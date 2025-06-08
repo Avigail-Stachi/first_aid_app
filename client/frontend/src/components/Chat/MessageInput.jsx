@@ -1,6 +1,6 @@
 //להציג טקסט וכפתור שליחה
 //לשלוח לשרת כשנלחץ שלח או אנטר
-
+ 
 import React from "react";
 import "../../styles/MessageInput.css";
 

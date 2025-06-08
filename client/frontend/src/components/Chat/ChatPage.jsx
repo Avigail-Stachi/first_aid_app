@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useCallback, useContext, useEffect } from "react";
+//import { useNavigate } from "react-router-dom";
 import ChatWindow from "./ChatWindow";
 import MessageInput from "./MessageInput";
 import VoiceRecorder from "./VoiceRecorder";
@@ -10,8 +10,7 @@ import ChatActions from "./ChatActions";
 import { ChatContext } from "../../context/ChatContext";
 // import { speakText } from "../speech";
 const ChatPage = () => {
-  //אישמ
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
   const [lastPrediction, setLastPrediction] = useState("");
   const {
     messages,
@@ -26,14 +25,21 @@ const ChatPage = () => {
     setLocationSent,
     showImageCapture,
     setShowImageCapture,
-    treatmentParams,
+    //treatmentParams,
     setTreatmentParams,
     history,
     setHistory,
-    newChat,
+    //newChat,
+    isUserInputLocked,
+    setIsUserInputLocked,
   } = useContext(ChatContext);
 
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+  const shouldLock = isFinalDecision || showImageCapture;
+  setIsUserInputLocked(shouldLock);
+}, [isFinalDecision, showImageCapture, setIsUserInputLocked]);
 
   const handleLocation = useCallback(
     async ({ lat, lng, address }) => {
@@ -145,7 +151,7 @@ const ChatPage = () => {
     [setMessages, setLocationSent, history, lastPrediction]
   );
   const sendRequest = async () => {
-    if (!inputMsg.trim() || isFinalDecision) return;
+    if (!inputMsg.trim() || isFinalDecision || isUserInputLocked) return;
     setMessages((prev) => [...prev, { text: inputMsg, fromUser: true }]);
     const newHistory = [...history, inputMsg];
     setHistory(newHistory);
@@ -179,23 +185,39 @@ const ChatPage = () => {
       setInputMsg("");
       setLastPrediction(data.result);
 
-      if (data.has_decision) {
-        const isBurnAwaitingImage =
-          data.result.toLowerCase().includes("burns") &&
-          data.result.toLowerCase().includes("awaiting image");
+      // if (data.has_decision) {
+      //   const isBurnAwaitingImage =
+      //     data.result.toLowerCase().includes("burns") &&
+      //     data.result.toLowerCase().includes("awaiting image");
 
-        setTreatmentParams({
-          caseType: isBurnAwaitingImage
-            ? data.result
-                .replace(" (awaiting image for severity assessment)", "")
-                .trim() // ננקה את ההודעה
-            : data.result,
-          degree: data.degree ?? undefined, // יהיה קיים רק אם זה לא כוויה
-          hasImageDiagnosis: false, // בשלב הטקסטואלי, אין אבחון תמונה
-          identifiedDegrees: [], // אין דרגות זוהות מתמונה בשלב זה
-          predictImageBase64: null, // אין תמונה בשלב זה
-        });
-      }
+      //   setTreatmentParams({
+      //     caseType: isBurnAwaitingImage
+      //       ? data.result
+      //           .replace(" (awaiting image for severity assessment)", "")
+      //           .trim() // ננקה את ההודעה
+      //       : data.result,
+      //     degree: data.degree ?? undefined, // יהיה קיים רק אם זה לא כוויה
+      //     hasImageDiagnosis: false, // בשלב הטקסטואלי, אין אבחון תמונה
+      //     identifiedDegrees: [], // אין דרגות זוהות מתמונה בשלב זה
+      //     predictImageBase64: null, // אין תמונה בשלב זה
+      //   });
+      // }
+
+      const isBurnAwaitingImage =
+        data.result.toLowerCase().includes("burns") &&
+        data.result.toLowerCase().includes("awaiting image");
+
+      setTreatmentParams({
+        caseType: isBurnAwaitingImage
+          ? data.result
+              .replace(" (awaiting image for severity assessment)", "")
+              .trim()
+          : data.result,
+        degree: data.degree ?? undefined, // יהיה קיים רק אם זה לא כוויה
+        hasImageDiagnosis: false, // בשלב הטקסטואלי, אין אבחון תמונה
+        identifiedDegrees: [], // אין דרגות זוהות מתמונה בשלב זה
+        predictImageBase64: null, // אין תמונה בשלב זה
+      });
 
       if (
         data.result &&
@@ -217,6 +239,7 @@ const ChatPage = () => {
   };
 
   const handleSendAudio = async (blob) => {
+    if (isFinalDecision || isUserInputLocked) return;
     const url = URL.createObjectURL(blob);
     const audioMessage = { audioUrl: url, fromUser: true };
     setMessages((prev) => [...prev, audioMessage]);
@@ -296,22 +319,37 @@ const ChatPage = () => {
       //     degree: predictData?.degree ?? undefined,
       //   });
       // }
-      if (finalDecisionFlag) {
-        const isBurnAwaitingImage =
-          finalAnswer.toLowerCase().includes("burns") &&
-          finalAnswer.toLowerCase().includes("awaiting image");
-        setTreatmentParams({
-          caseType: isBurnAwaitingImage
-            ? finalAnswer
-                .replace(" (awaiting image for severity assessment)", "")
-                .trim()
-            : finalAnswer,
-          degree: predictData?.degree ?? undefined,
-          hasImageDiagnosis: false,
-          identifiedDegrees: [],
-          predictImageBase64: null,
-        });
-      }
+
+      const isBurnAwaitingImage =
+        finalAnswer.toLowerCase().includes("burns") &&
+        finalAnswer.toLowerCase().includes("awaiting image");
+      setTreatmentParams({
+        caseType: isBurnAwaitingImage
+          ? finalAnswer
+              .replace(" (awaiting image for severity assessment)", "")
+              .trim()
+          : finalAnswer,
+        degree: predictData?.degree ?? undefined,
+        hasImageDiagnosis: false,
+        identifiedDegrees: [],
+        predictImageBase64: null,
+      });
+      // if (finalDecisionFlag) {
+      //   const isBurnAwaitingImage =
+      //     finalAnswer.toLowerCase().includes("burns") &&
+      //     finalAnswer.toLowerCase().includes("awaiting image");
+      //   setTreatmentParams({
+      //     caseType: isBurnAwaitingImage
+      //       ? finalAnswer
+      //           .replace(" (awaiting image for severity assessment)", "")
+      //           .trim()
+      //       : finalAnswer,
+      //     degree: predictData?.degree ?? undefined,
+      //     hasImageDiagnosis: false,
+      //     identifiedDegrees: [],
+      //     predictImageBase64: null,
+      //   });
+      // }
       if (
         finalAnswer &&
         finalAnswer.toLowerCase().includes("burns") &&
@@ -339,9 +377,15 @@ const ChatPage = () => {
         inputMsg={inputMsg}
         setInputMsg={setInputMsg}
         onSend={sendRequest}
-        disabled={isLoading || isFinalDecision}
+        disabled={isLoading || isUserInputLocked}
       />
-      {!isFinalDecision && <VoiceRecorder onSendAudio={handleSendAudio} />}
+      {!isUserInputLocked && (
+        <VoiceRecorder
+          onSendAudio={handleSendAudio}
+          disabled={isUserInputLocked}
+        />
+      )}
+
       {ambulance_flag && isFinalDecision && !locationSent && (
         <LocationFetcher onLocation={handleLocation} />
       )}
