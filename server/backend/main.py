@@ -9,8 +9,7 @@ from typing import Optional, List, Dict, Any
 #from debugpy.common.log import warning
 from fastapi import FastAPI, Request, HTTPException, File, UploadFile,Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
+#from fastapi.responses import FileResponse
 #from pooch.utils import unique_file_name
 from pydantic import BaseModel
 
@@ -34,10 +33,6 @@ PREDICTED_IMAGES_DIR = "predicted_images"
 os.makedirs(TEMP_UPLOAD_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(PREDICTED_IMAGES_DIR, exist_ok=True)
-
-MEDIA_ROOT=r"C:\Users\User\Projects\first_aid_app\server\backend\media"
-os.makedirs(MEDIA_ROOT, exist_ok=True)
-app.mount("/media", StaticFiles(directory=MEDIA_ROOT), name="media")
 
 #כשהמצב הוא לא פיתוח אז לעשות בקומנד
 #set ENVIRONMENT=production
@@ -311,99 +306,52 @@ async def upload_burn_image_faster(image: UploadFile = File(...)):
 #         print(f"שגיאת שרת ב-/treatment: {e}")  # New: Added debug print
 #         raise HTTPException(status_code=500, detail=f"שגיאת שרת: {str(e)}")
 
+
 @app.get("/treatment")
 async def get_treatment(
-        case_type: str = Query(..., description="Type of emergency case"),
-        count: int = Query(..., ge=0, le=3, description="0=short, 1=detailed, 2=image, 3=video"),
-        degrees: Optional[str] = Query(None, description="Comma-separated list of severity degrees (e.g., '1', '1,2')"),
-        degree: Optional[int] = Query(None,
-                                      description="Severity degree (e.g., 1, 2, 3) for non-burn cases or single burn degree")
+    case_type: str = Query(..., description="Type of emergency case"),
+    count: int = Query(..., ge=0, le=3, description="0=short, 1=detailed, 2=image, 3=video"),
+    degrees: Optional[str] = Query(None, description="Comma-separated list of severity degrees (e.g., '1', '1,2')"),
+    degree: Optional[int] = Query(None, description="Severity degree (e.g., 1, 2, 3) for non-burn cases or single burn degree")
 ):
     try:
-        print(
-            f"DEBUG: /treatment endpoint called with case_type={case_type}, count={count}, degrees={degrees}, degree={degree}")
+        print(f"DEBUG: /treatment endpoint called with case_type={case_type}, count={count}, degrees={degrees}, degree={degree}")
         degrees_list = None
         if case_type.lower() == "burns" and degrees:
             degrees_list = [d.strip() for d in degrees.split(',') if d.strip()]
 
         result_data_from_db = await get_treatment_data(case_type, count, degrees=degrees_list, degree=degree)
 
-        print(
-            f"DEBUG: result_data_from_db from get_treatment_data: {result_data_from_db}, type: {type(result_data_from_db)}")
+        print(f"DEBUG: result_data_from_db from get_treatment_data: {result_data_from_db}, type: {type(result_data_from_db)}")
 
-        if not result_data_from_db:
-            raise HTTPException(status_code=404, detail="No treatment data found for the given criteria.")
-
-        # --- לוגיקה חדשה להגשת קבצים ישירות (count=2 או count=3) ---
-        if count == 2:  # מקרה של תמונה
-            # מצפה שה-DB יחזיר רק פריט אחד עבור 'count=2' או 'count=3' אם הוא מוצא
-            if not result_data_from_db or not result_data_from_db[0].get("image_url"):
-                raise HTTPException(status_code=404, detail="No image URL found for this treatment.")
-
-            # הנתיב המוחלט לקובץ התמונה כפי שהוא ב-DB
-            image_full_path = result_data_from_db[0]["image_url"]
-
-            # בדיקה אם הקובץ קיים בשרת
-            if not os.path.exists(image_full_path):
-                print(f"ERROR: Image file not found at {image_full_path}")
-                raise HTTPException(status_code=404, detail="Image file not found on server.")
-
-            # החזרת הקובץ כתגובת FileResponse
-            return FileResponse(image_full_path, media_type="image/jpeg")  # או "image/png"
-
-        elif count == 3:  # מקרה של וידאו
-            if not result_data_from_db or not result_data_from_db[0].get("video_url"):
-                raise HTTPException(status_code=404, detail="No video URL found for this treatment.")
-
-            # הנתיב המוחלט לקובץ הוידאו כפי שהוא ב-DB
-            video_full_path = result_data_from_db[0]["video_url"]
-
-            # בדיקה אם הקובץ קיים בשרת
-            if not os.path.exists(video_full_path):
-                print(f"ERROR: Video file not found at {video_full_path}")
-                raise HTTPException(status_code=404, detail="Video file not found on server.")
-
-            # החזרת הקובץ כתגובת FileResponse
-            return FileResponse(video_full_path,
-                                media_type="video/mp4")  # או media_type מתאים אחר (לדוגמה "video/quicktime" ל-mov)
-
-        # --- לוגיקה קיימת עבור count=0 או count=1 (טקסט) ---
         formatted_results = []
-        for item in result_data_from_db:
-            # המרה של נתיבים מוחלטים ל-URLs יחסיים עבור count=0 או count=1
-            # (אם הם נשמרים ב-DB גם עבור המקרים הללו)
-            image_url = None
-            if item.get("image_url"):
-                image_filename = os.path.basename(item["image_url"])
-                image_url = f"/media/{image_filename}"  # ה-URL שה-Frontend יבקש
+        if result_data_from_db:
+            if not isinstance(result_data_from_db, list):
+                print(f"ERROR: get_treatment_data returned non-list type: {type(result_data_from_db)}. Data: {result_data_from_db}")
+                raise HTTPException(status_code=500, detail="Internal server error: DB manager returned unexpected type.")
 
-            video_url = None
-            if item.get("video_url"):
-                video_filename = os.path.basename(item["video_url"])
-                video_url = f"/media/{video_filename}"  # ה-URL שה-Frontend יבקש
+            for item in result_data_from_db:
+                formatted_item = {
+                    "id": item.get("id"),
+                    "case_type": item.get("case_type"),
+                    "degree": item.get("degree"),
+                    "title": item.get("title"),
+                    "description": item.get("description"),
+                    "image_url": item.get("image_url"),
+                    "video_url": item.get("video_url")
+                }
+                formatted_results.append(formatted_item)
 
-            formatted_item = {
-                "id": item.get("id"),
-                "case_type": item.get("case_type"),
-                "degree": item.get("degree"),
-                "title": item.get("title"),
-                "description": item.get("description"),
-                "image_url": image_url,  # ה-URL הציבורי
-                "video_url": video_url  # ה-URL הציבורי
-            }
-            formatted_results.append(formatted_item)
-
-        print(f"DEBUG: Returning from /treatment (text): {{'result': {formatted_results}}}")
+        print(f"DEBUG: Returning from /treatment: {{'result': {formatted_results}}}")
         return {"result": formatted_results}
 
     except ValueError as ve:
         print(f"ValueError in /treatment: {ve}")
         raise HTTPException(status_code=400, detail=str(ve))
-    except HTTPException:  # תופס את ה-HTTPException שהעלנו בתוך הלוגיקה
-        raise
     except Exception as e:
         print(f"שגיאת שרת ב-/treatment: {e}")
         raise HTTPException(status_code=500, detail=f"שגיאת שרת: {str(e)}")
+
 # @app.post("/upload-image")
 # async def upload_image(image: UploadFile = File(...)):
 #     try:
