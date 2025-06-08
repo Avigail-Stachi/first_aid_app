@@ -234,7 +234,7 @@ async def upload_burn_image_faster(image: UploadFile = File(...)):
         warning= None
 
         if not burn_degrees_detected:
-            warning = "⚠️ לא זוהתה כוויה בביטחון מספק. אנא נסה תמונה נוספת או תאר את הפציעה."
+            warning = "⚠️ No burn detected with sufficient confidence. Please try another image or describe the injury."
             result_message = "burns (awaiting image for severity assessment)"
         elif len(burn_degrees_detected) == 1:
             degree_str = burn_degrees_detected[0].replace('degree_', '')
@@ -243,7 +243,7 @@ async def upload_burn_image_faster(image: UploadFile = File(...)):
         else:
             degrees_formatted = ", ".join([d.replace('degree_', '') for d in burn_degrees_detected])
             result_message = f"burns (degrees {degrees_formatted})"
-            warning = "⚠️ זוהו מספר סוגי כוויות. הטיפול עשוי להשתנות."
+            warning = "⚠️ Multiple burn types detected. Treatment may vary."
             has_decision_after_image = True
 
         with open(output_image_path, "rb") as img_file:
@@ -264,8 +264,7 @@ async def upload_burn_image_faster(image: UploadFile = File(...)):
 
     except Exception as e:
         print(f"שגיאה בעיבוד תמונה עם Faster R-CNN: {e}")
-        raise HTTPException(status_code=500, detail=f"שגיאה בעיבוד התמונה: {str(e)}")
-
+        raise HTTPException(status_code=500, detail=f"Error processing the image: {str(e)}")
 
 # main.py - רק החלק של האנדפוינט /treatment המתוקן לנתיבים מוחלטים ב-DB
 #
