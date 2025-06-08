@@ -299,8 +299,6 @@
 // //     </div>
 // //   );
 // // }
-
-
 import React, { useContext, useEffect, useState, useCallback } from "react";
 import { useSearchParams, useNavigate} from "react-router-dom";
 import { ChatContext } from "../context/ChatContext";
@@ -318,7 +316,12 @@ const TreatmentInstructionsDisplay = ({ caseType, degree, degrees, currentCount 
       try {
         let url = `${process.env.REACT_APP_API_URL}/treatment?case_type=${encodeURIComponent(type)}&count=${count}`;
 
+        // שינוי 1: התאמה לטיפול בפרמטר degrees, ייתכן שיש יותר מדרגה אחת
         if (type.toLowerCase().includes("burn") && degreesParam) {
+          // degreesParam יכול להיות "1" או "1,2,3" אם מדובר על מספר דרגות.
+          // אם ה-backend מצפה למערך, כדאי לשלוח אותו כ-`degrees=1&degrees=2`
+          // או לטפל בזה ב-backend. כרגע, ה-backend שלך כבר מטפל ב-"1,1"
+          // שנשלח בצורה כזו.
           url += `&degrees=${encodeURIComponent(degreesParam)}`;
         } else if (deg !== undefined && deg !== null) {
           url += `&degree=${deg}`;
@@ -329,14 +332,16 @@ const TreatmentInstructionsDisplay = ({ caseType, degree, degrees, currentCount 
         const res = await fetch(url);
         if (!res.ok) {
           const errorData = await res.json();
-          throw new Error(errorData.detail || `HTTP error! Status: ${res.status}`); // Changed message
+          throw new Error(errorData.detail || `HTTP error! Status: ${res.status}`);
         }
         
         const data = await res.json();
-        setInstructionData(data.result); 
+        // שינוי 2: וודא שה-data.result הוא מערך, גם אם ה-backend מחזיר אובייקט בודד
+        // ה-backend שלך מחזיר מערך, אז זה בסדר.
+        setInstructionData(data.result);
       } catch (err) {
-        console.error("Failed to fetch treatment instructions:", err); // Changed message
-        setError(`Error loading treatment instructions: ${err.message}`); // Changed message
+        console.error("Failed to fetch treatment instructions:", err);
+        setError(`Error loading treatment instructions: ${err.message}`);
         setInstructionData(null);
       } finally {
         setIsLoading(false);
@@ -350,7 +355,7 @@ const TreatmentInstructionsDisplay = ({ caseType, degree, degrees, currentCount 
   }, [caseType, degree, degrees, currentCount, fetchInstructions]);
 
   if (isLoading) {
-    return <div>Loading treatment instructions...</div>; // Changed message
+    return <div>Loading treatment instructions...</div>;
   }
 
   if (error) {
@@ -358,57 +363,59 @@ const TreatmentInstructionsDisplay = ({ caseType, degree, degrees, currentCount 
   }
 
   if (!instructionData || !Array.isArray(instructionData) || instructionData.length === 0) {
-    return <p>No further information available for this step.</p>; // Changed message
+    return <p>No further information available for this step.</p>;
   }
 
   return (
     <div>
       {instructionData.map((item, index) => {
-        const titleSuffix = item.degree !== null ? ` Degree ${item.degree}` : ""; // Changed message
-        const itemTitle = `${item.case_type}${titleSuffix}`;
+        // שינוי 3: התייחסות לשדות כפי שהם מגיעים מה-backend
+        // ה-backend מחזיר "title", "description", "image_url", "video_url"
+        // במקום "case_type", "degree", "short_instruction", "detailed_instruction"
+        const itemTitle = item.title || `Treatment for ${caseType}`; // השתמש ב-title או ב-caseType מה-URL
         
         let contentToDisplay = null;
         let speakableText = "";
 
-        if (currentCount === 0) { // Short instruction
-          speakableText = item.short_instruction;
-          contentToDisplay = <p>{item.short_instruction || "No short instruction available."}</p>; // Changed message
+        if (currentCount === 0) { // Short instruction (או ה-description הראשון אם אין short)
+          speakableText = item.description; // שינוי 4: השתמש ב-description מה-backend
+          contentToDisplay = <p>{item.description || "No short instruction available."}</p>; // שינוי 4: השתמש ב-description
         } else if (currentCount === 1) { // Detailed instruction
-          speakableText = item.detailed_instruction;
-          contentToDisplay = <p>{item.detailed_instruction || "No detailed instruction available."}</p>; // Changed message
+          speakableText = item.description; // שינוי 5: השתמש ב-description מה-backend
+          contentToDisplay = <p>{item.description || "No detailed instruction available."}</p>; // שינוי 5: השתמש ב-description
         } else if (currentCount === 2) { // Image
           if (item.image_url) {
             contentToDisplay = (
               <img
                 src={item.image_url}
-                alt={itemTitle || "Treatment image"} // Changed message
+                alt={itemTitle || "Treatment image"}
                 style={{ maxWidth: "100%", height: "auto" }}
               />
             );
           } else {
-            contentToDisplay = <p>No image available for this step.</p>; // Changed message
+            contentToDisplay = <p>No image available for this step.</p>;
           }
         } else if (currentCount === 3) { // Video
           if (item.video_url) {
             contentToDisplay = (
               <video controls style={{ maxWidth: "100%", height: "auto" }}>
                 <source src={item.video_url} type="video/mp4" />
-                Your browser does not support video. {/* This message is standard browser text */}
+                Your browser does not support video.
               </video>
             );
           } else {
-            contentToDisplay = <p>No video available for this step.</p>; // Changed message
+            contentToDisplay = <p>No video available for this step.</p>;
           }
         }
 
         return (
           <div key={index} style={{ marginBottom: "1rem", borderBottom: "1px dashed #ccc", paddingBottom: "1rem" }}>
-            {itemTitle && <h3>{itemTitle}</h3>}
+            {itemTitle && <h3>{itemTitle}</h3>} {/* יציג "burns Degree 1" או "Treatment for burns" */}
             {contentToDisplay}
             {(currentCount === 0 || currentCount === 1) && speakableText && (
               <button
                 onClick={() => speakText(speakableText)}
-                title="Read aloud" // Changed message
+                title="Read aloud"
                 style={{
                   background: "none",
                   border: "none",
@@ -432,8 +439,8 @@ export default function TreatmentScreen() {
   const { newChat } = useContext(ChatContext);
 
   const initialCaseType = searchParams.get("case_type") || "";
-  const initialDegreesParam = searchParams.get("degrees");
-  const initialDegree = searchParams.get("degree");
+  const initialDegreesParam = searchParams.get("degrees"); // יכיל "1,1" במקרה זה
+  const initialDegree = searchParams.get("degree"); // יהיה null במקרה זה כי משתמשים ב-degrees
 
   const currentCount = parseInt(searchParams.get("count") || "0", 10);
 
@@ -453,21 +460,22 @@ export default function TreatmentScreen() {
 
   return (
     <div style={{ maxWidth: 600, margin: "2rem auto", padding: "1rem", border: "1px solid #eee", borderRadius: "8px" }}>
-      <h2>Treatment Page</h2> {/* Changed message */}
+      <h2>Treatment Page</h2>
 
       {!initialCaseType && (
         <p style={{ color: "gray" }}>
-          Treatment instructions cannot be provided as no diagnosis was made. Please return to the chat and describe the emergency. {/* Changed message */}
+          Treatment instructions cannot be provided as no diagnosis was made. Please return to the chat and describe the emergency.
         </p>
       )}
 
       {initialCaseType && (
         <div>
-          <h3>Treatment for {initialCaseType}</h3> {/* Changed message */}
+          {/* שינוי 6: כאן אפשר להשאיר את "Treatment for {initialCaseType}" כי זה תלוי בפרמטר מה-URL */}
+          <h3>Treatment for {initialCaseType}</h3> 
           <TreatmentInstructionsDisplay 
             caseType={initialCaseType}
-            degrees={initialDegreesParam}
-            degree={initialDegree}
+            degrees={initialDegreesParam} // יהיה "1,1" במקרה זה
+            degree={initialDegree} // יהיה null במקרה זה
             currentCount={currentCount}
           />
           <button
@@ -475,14 +483,14 @@ export default function TreatmentScreen() {
             disabled={currentCount >= 3} 
             style={{ marginTop: "0.5rem", marginBottom: "1rem" }}
           >
-            I didn't understand (Next step) {/* Changed message */}
+            I didn't understand (Next step)
           </button>
         </div>
       )}
 
       <hr style={{ margin: "2rem 0" }} />
-      <button onClick={handleBackToChat}>Back to Chat</button> {/* Changed message */}
-      <button onClick={newChat} style={{ marginLeft: "1rem" }}>Start New Chat</button> {/* Changed message */}
+      <button onClick={handleBackToChat}>Back to Chat</button>
+      <button onClick={newChat} style={{ marginLeft: "1rem" }}>Start New Chat</button>
     </div>
   );
 }
