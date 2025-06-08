@@ -16,21 +16,11 @@ def _get_treatment_data_sync(case_type: str, count: int, degrees: Optional[List[
 
     if case_type.lower() == "burns" and degrees:
         if 'all' in [d.lower() for d in degrees]:
-            print(f"DEBUG: _get_treatment_data_sync: Handling 'burns' with 'degrees=all'.")
-            query = f'''
-                SELECT {select_columns_str} FROM treatments
-                WHERE case_type = ? AND degree IS NULL;
-            '''
-            cur.execute(query, (case_type,))
-            rows = cur.fetchall()
-            raw_results.extend(rows)
+            return [] # Changed: Return empty list if 'all' is sent for degrees in burns
         else:
-            print(f"DEBUG: _get_treatment_data_sync: Handling 'burns' with specific degrees: {degrees}")
             try:
                 int_degrees = [int(d) for d in degrees]
             except ValueError:
-                print(
-                    f"ERROR: _get_treatment_data_sync: Invalid degree value in degrees list, cannot convert to int: {degrees}")
                 conn.close()
                 return None
 
@@ -43,19 +33,7 @@ def _get_treatment_data_sync(case_type: str, count: int, degrees: Optional[List[
             rows = cur.fetchall()
             raw_results.extend(rows)
 
-            if not raw_results:
-                print(
-                    f"DEBUG: _get_treatment_data_sync: No specific burn degree found, trying general burn instruction (degree IS NULL).")
-                cur.execute(f'''
-                            SELECT {select_columns_str} FROM treatments
-                            WHERE case_type = ? AND degree IS NULL;
-                        ''', (case_type,))
-                general_burn_instruction_row = cur.fetchone()
-                if general_burn_instruction_row:
-                    raw_results.append(general_burn_instruction_row)
-
     elif degree is not None:
-        print(f"DEBUG: _get_treatment_data_sync: Handling single degree: {degree} for {case_type}.")
         query = f'''
             SELECT {select_columns_str} FROM treatments
             WHERE case_type = ? AND degree = ?;
@@ -65,8 +43,6 @@ def _get_treatment_data_sync(case_type: str, count: int, degrees: Optional[List[
         if row:
             raw_results.append(row)
         else:
-            print(
-                f"DEBUG: _get_treatment_data_sync: No specific degree found for {case_type} with degree {degree}, trying general instruction (degree IS NULL).")
             query = f'''
                 SELECT {select_columns_str} FROM treatments
                 WHERE case_type = ? AND degree IS NULL;
@@ -75,10 +51,7 @@ def _get_treatment_data_sync(case_type: str, count: int, degrees: Optional[List[
             row = cur.fetchone()
             if row:
                 raw_results.append(row)
-
-
     else:
-        print(f"DEBUG: _get_treatment_data_sync: Handling general case for {case_type} with degree IS NULL.")
         query = f'''
             SELECT {select_columns_str} FROM treatments
             WHERE case_type = ? AND degree IS NULL;
@@ -91,7 +64,6 @@ def _get_treatment_data_sync(case_type: str, count: int, degrees: Optional[List[
     conn.close()
 
     if not raw_results:
-        print("DEBUG: _get_treatment_data_sync: No raw results found in DB.")
         return None
 
     processed_results = []
@@ -125,7 +97,6 @@ def _get_treatment_data_sync(case_type: str, count: int, degrees: Optional[List[
         }
         processed_results.append(instruction_data)
 
-    print(f"DEBUG: _get_treatment_data_sync: Returning processed results: {processed_results}")
     return processed_results
 
 

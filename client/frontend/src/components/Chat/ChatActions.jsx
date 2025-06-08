@@ -8,26 +8,26 @@ export default function ChatActions() {
   useEffect(() => {
     console.log("ChatActions - treatmentParams updated:", treatmentParams);
     if (treatmentParams) {
-      console.log("  hasImageDiagnosis:", treatmentParams.hasImageDiagnosis);
-      console.log("  identifiedDegrees:", treatmentParams.identifiedDegrees);
+      console.log("  hasImageDiagnosis:", treatmentParams.hasImageDiagnosis);
+      console.log("  identifiedDegrees:", treatmentParams.identifiedDegrees);
       console.log(
-        "  identifiedDegrees type:",
+        "  identifiedDegrees type:",
         typeof treatmentParams.identifiedDegrees
       );
       if (Array.isArray(treatmentParams.identifiedDegrees)) {
         console.log(
-          "  identifiedDegrees length:",
+          "  identifiedDegrees length:",
           treatmentParams.identifiedDegrees.length
         );
       }
-      console.log("  Server Warning:", treatmentParams.serverWarning); // נוסף!
+      console.log("  Server Warning:", treatmentParams.serverWarning);
       console.log(
-        "  Result awaiting image:",
+        "  Result awaiting image:",
         treatmentParams.resultAwaitingImage
       );
       console.log(
-        "   Predicted Image Base64 (exists):",
-        !!treatmentParams.predictedImageBase64 // <--- שינוי
+        "   Predicted Image Base64 (exists):",
+        !!treatmentParams.predictedImageBase64
       );
     }
   }, [treatmentParams]);
@@ -36,97 +36,80 @@ export default function ChatActions() {
       treatmentParams?.caseType && typeof treatmentParams.caseType === "string"
         ? treatmentParams.caseType
         : "";
-    let url = `/treatment?case_type=${encodeURIComponent(
-      currentCaseType // *** השתמשי כאן ב-currentCaseType המבוטח ***
-    )}`;
+    let url = `/treatment?case_type=${encodeURIComponent(currentCaseType)}`;
 
-    //  מפההה
-
-    // // אם זה מקרה כוויה
-    // if (currentCaseType.toLowerCase().includes("burn")) {
-    //   // אם זוהו דרגות מהתמונה (identifiedDegrees)
-    //   if (
-    //     treatmentParams.hasImageDiagnosis &&
-    //     treatmentParams.identifiedDegrees &&
-    //     treatmentParams.identifiedDegrees.length > 0
-    //   ) {
-    //     url += `&degrees=${treatmentParams.identifiedDegrees.join(",")}`;
-    //   }
-    //   // אם זוהה כוויה, אבל אין אבחון תמונה, או שאבחון התמונה לא זיהה דרגות כלל
-    //   // נשלח אינדיקציה להציג את כל הדרגות (1, 2, 3)
-    //   else {
-    //     // המצב הזה מתרחש כאשר caseType הוא "burn", אבל
-    //     // או שאין hasImageDiagnosis (אבחון טקסטואלי),
-    //     // או שיש hasImageDiagnosis אבל identifiedDegrees ריק (תמונה לא זיהתה כלום).
-    //     url += `&degrees=all`;
-    //   }
-    // } else {
-    //   // למקרים שאינם כוויה, נשלח את ה-degree אם קיים
-    //   if (treatmentParams.degree) {
-    //     url += `&degree=${treatmentParams.degree}`;
-    //   }
-    // }
-
-    //לפהההה
-
+    // ***** התחל להחליף מפה *****
     if (currentCaseType.toLowerCase().includes("burn")) {
-      // אם בוצע אבחון תמונה ויש אזהרה (low confidence)
-      // או אם ה-result מהשרת מציין שעדיין ממתינים לתמונה נוספת לאבחון חמור יותר
-      // אז נשלח &degrees=all כדי להציג את הטיפול הכללי.
-      // אחרת, אם זוהו דרגות בביטחון (כלומר אין אזהרה ואין "awaiting image"), נשלח את הדרגות הספציפיות.
+      const uniqueIdentifiedDegrees = Array.isArray(
+        treatmentParams.identifiedDegrees
+      )
+        ? [...new Set(treatmentParams.identifiedDegrees)].sort((a, b) => a - b)
+        : []; // תנאי 1 (עדיפות גבוהה): אם הועלתה תמונה וזוהו דרגות כלשהן // זהו המצב בעל העדיפות הגבוהה ביותר. גם אם יש serverWarning (כמו "Multiple burn types"), // אנחנו רוצים להציג את הדרגות הספציפיות שזוהו.
+
       if (
-        treatmentParams.hasImageDiagnosis &&
-        (treatmentParams.serverWarning || treatmentParams.resultAwaitingImage) // <-- **השורה הזו השתנתה**
+        treatmentParams.hasImageDiagnosis && // יש אבחון תמונה (true)
+        uniqueIdentifiedDegrees.length > 0
       ) {
-        url += `&degrees=all`;
-      }
-      // אם זוהו דרגות מהתמונה (identifiedDegrees) ואין אזהרה (אבחון מוצלח)
+        // וזוהו דרגות ספציפיות (true)
+        url += `&degrees=${uniqueIdentifiedDegrees.join(",")}`; // <-- זה מה שיתבצע!
+      } // תנאי 2: אם אין עדיין אבחון תמונה (אבחון טקסטואלי ראשוני) // או שהשרת מבקש תמונה נוספת (resultAwaitingImage), או שיש serverWarning // מבלי שזוהו דרגות ספציפיות (כמו במקרה שהשרת לא זיהה דרגות אבל נתן אזהרה כללית). // במקרים אלו, נציג הוראות טיפול לכל 3 הדרגות.
       else if (
-        treatmentParams.hasImageDiagnosis &&
-        Array.isArray(treatmentParams.identifiedDegrees) &&
-        treatmentParams.identifiedDegrees.length > 0
+        !treatmentParams.hasImageDiagnosis || // אין אבחון תמונה (אבחון טקסטואלי)
+        treatmentParams.resultAwaitingImage || // השרת עדיין ממתין לתמונה
+        (treatmentParams.hasImageDiagnosis && // או יש אבחון תמונה אבל...
+          uniqueIdentifiedDegrees.length === 0 && // ...לא זוהו דרגות
+          !!treatmentParams.serverWarning)
       ) {
-        url += `&degrees=${treatmentParams.identifiedDegrees.join(",")}`;
-      }
-      // אם זה מקרה כוויה אבל ללא אבחון תמונה (אבחון טקסטואלי)
-      // או אם מסיבה כלשהי identifiedDegrees ריק לחלוטין (ללא אזהרה), נשלח &degrees=all
-      else {
-        url += `&degrees=all`;
+        // ...ויש אזהרה מהשרת (כמו "תמונה לא ברורה")
+        url += `&degrees=1,2,3`;
+      } // תנאי 3: הועלתה תמונה, אך לא זוהו דרגות (uniqueIdentifiedDegrees ריק) // ואין אזהרה מהשרת (כלומר, השרת פשוט לא זיהה כלום באופן ודאי). // במקרה זה, לא נשלח פרמטר degrees כלל, ונעצור את הניווט.
+      else if (
+        treatmentParams.hasImageDiagnosis && // יש אבחון תמונה
+        uniqueIdentifiedDegrees.length === 0 && // אבל לא זוהו דרגות
+        !treatmentParams.serverWarning
+      ) {
+        // ואין אזהרה ספציפית
+        console.log(
+          "No specific burn degrees identified and no warning. Remaining on chat page."
+        );
+        return; // עוצר את הניווט
       }
     } else {
+      // למקרים שאינם כוויה, נשלח את ה-degree אם קיים
       if (treatmentParams.degree) {
         url += `&degree=${treatmentParams.degree}`;
       }
     }
+    // ***** סיים להחליף פה *****
 
-    // ה-count תמיד מתחיל מ-0 כשמגיעים לעמוד הטיפול בפעם הראשונה
     url += `&count=0`;
     navigate(url);
-  };
+  }; // הקוד של isDisabled גם צריך להיות מעודכן כפי שסופק בתשובה הקודמת
 
-  // // לוגיקה לקביעת האם הכפתור מנוטרל
-  // let isDisabled = true;
-  // if (treatmentParams && typeof treatmentParams.caseType === "string") {
-  //   const currentCaseTypeForDisabled = treatmentParams.caseType;
-  //   if (currentCaseTypeForDisabled.toLowerCase().includes("burn")) {
-  //     // אם זה כוויה
-  //     if (treatmentParams.hasImageDiagnosis) {
-  //       // אם היה אבחון תמונה, הכפתור פעיל רק אם זוהו דרגות כלשהן
-  //       isDisabled =
-  //         !treatmentParams.identifiedDegrees ||
-  //         treatmentParams.identifiedDegrees.length === 0;
-  //     } else {
-  // לוגיקה לקביעת האם הכפתור מנוטרל
   let isDisabled = true;
   if (treatmentParams && typeof treatmentParams.caseType === "string") {
     const currentCaseTypeForDisabled = treatmentParams.caseType;
 
     if (currentCaseTypeForDisabled.toLowerCase().includes("burn")) {
-      // אם זה כוויה
-      // הכפתור תמיד יהיה פעיל אם יש איזשהו אבחון (תמונה או טקסט)
-      isDisabled = false;
+      if (
+        (treatmentParams.hasImageDiagnosis &&
+          Array.isArray(treatmentParams.identifiedDegrees) &&
+          treatmentParams.identifiedDegrees.length > 0) ||
+        !treatmentParams.hasImageDiagnosis ||
+        treatmentParams.resultAwaitingImage ||
+        (treatmentParams.hasImageDiagnosis &&
+          !Array.isArray(treatmentParams.identifiedDegrees) &&
+          !!treatmentParams.serverWarning) ||
+        (treatmentParams.hasImageDiagnosis &&
+          Array.isArray(treatmentParams.identifiedDegrees) &&
+          treatmentParams.identifiedDegrees.length === 0 &&
+          !!treatmentParams.serverWarning)
+      ) {
+        isDisabled = false;
+      } else {
+        isDisabled = true;
+      }
     } else {
-      // אם זה לא כוויה, הכפתור פעיל כל עוד יש caseType (אבחון טקסטואלי רגיל).
       isDisabled = false;
     }
   }
@@ -134,12 +117,14 @@ export default function ChatActions() {
 
   return (
     <>
+           {" "}
       <button onClick={newChat} style={{ marginTop: "1rem" }}>
-        Start New Chat
+                Start New Chat      {" "}
       </button>
+           {" "}
       <button
         onClick={handleWhatToDoClick}
-        disabled={isDisabled} // השתמש ב-isDisabled שחושב למעלה
+        disabled={isDisabled}
         style={{
           marginLeft: "1rem",
           marginTop: "1rem",
@@ -147,8 +132,9 @@ export default function ChatActions() {
           cursor: isDisabled ? "not-allowed" : "pointer",
         }}
       >
-        What to do?
+                What to do?      {" "}
       </button>
+         {" "}
     </>
   );
 }
