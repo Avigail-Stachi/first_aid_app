@@ -299,6 +299,8 @@
 // //     </div>
 // //   );
 // // }
+
+
 import React, { useContext, useEffect, useState, useCallback } from "react";
 import { useSearchParams, useNavigate} from "react-router-dom";
 import { ChatContext } from "../context/ChatContext";
@@ -316,12 +318,7 @@ const TreatmentInstructionsDisplay = ({ caseType, degree, degrees, currentCount 
       try {
         let url = `${process.env.REACT_APP_API_URL}/treatment?case_type=${encodeURIComponent(type)}&count=${count}`;
 
-        // שינוי 1: התאמה לטיפול בפרמטר degrees, ייתכן שיש יותר מדרגה אחת
         if (type.toLowerCase().includes("burn") && degreesParam) {
-          // degreesParam יכול להיות "1" או "1,2,3" אם מדובר על מספר דרגות.
-          // אם ה-backend מצפה למערך, כדאי לשלוח אותו כ-`degrees=1&degrees=2`
-          // או לטפל בזה ב-backend. כרגע, ה-backend שלך כבר מטפל ב-"1,1"
-          // שנשלח בצורה כזו.
           url += `&degrees=${encodeURIComponent(degreesParam)}`;
         } else if (deg !== undefined && deg !== null) {
           url += `&degree=${deg}`;
@@ -336,8 +333,6 @@ const TreatmentInstructionsDisplay = ({ caseType, degree, degrees, currentCount 
         }
         
         const data = await res.json();
-        // שינוי 2: וודא שה-data.result הוא מערך, גם אם ה-backend מחזיר אובייקט בודד
-        // ה-backend שלך מחזיר מערך, אז זה בסדר.
         setInstructionData(data.result);
       } catch (err) {
         console.error("Failed to fetch treatment instructions:", err);
@@ -369,21 +364,18 @@ const TreatmentInstructionsDisplay = ({ caseType, degree, degrees, currentCount 
   return (
     <div>
       {instructionData.map((item, index) => {
-        // שינוי 3: התייחסות לשדות כפי שהם מגיעים מה-backend
-        // ה-backend מחזיר "title", "description", "image_url", "video_url"
-        // במקום "case_type", "degree", "short_instruction", "detailed_instruction"
-        const itemTitle = item.title || `Treatment for ${caseType}`; // השתמש ב-title או ב-caseType מה-URL
+        const itemTitle = item.title || `Treatment for ${caseType}`; 
         
         let contentToDisplay = null;
         let speakableText = "";
 
-        if (currentCount === 0) { // Short instruction (או ה-description הראשון אם אין short)
-          speakableText = item.description; // שינוי 4: השתמש ב-description מה-backend
-          contentToDisplay = <p>{item.description || "No short instruction available."}</p>; // שינוי 4: השתמש ב-description
-        } else if (currentCount === 1) { // Detailed instruction
-          speakableText = item.description; // שינוי 5: השתמש ב-description מה-backend
-          contentToDisplay = <p>{item.description || "No detailed instruction available."}</p>; // שינוי 5: השתמש ב-description
-        } else if (currentCount === 2) { // Image
+        if (currentCount === 0) { 
+          speakableText = item.description; 
+          contentToDisplay = <p>{item.description || "No short instruction available."}</p>; 
+        } else if (currentCount === 1) { 
+          speakableText = item.description; 
+          contentToDisplay = <p>{item.description || "No detailed instruction available."}</p>; 
+        } else if (currentCount === 2) { 
           if (item.image_url) {
             contentToDisplay = (
               <img
@@ -395,7 +387,7 @@ const TreatmentInstructionsDisplay = ({ caseType, degree, degrees, currentCount 
           } else {
             contentToDisplay = <p>No image available for this step.</p>;
           }
-        } else if (currentCount === 3) { // Video
+        } else if (currentCount === 3) { 
           if (item.video_url) {
             contentToDisplay = (
               <video controls style={{ maxWidth: "100%", height: "auto" }}>
@@ -410,7 +402,7 @@ const TreatmentInstructionsDisplay = ({ caseType, degree, degrees, currentCount 
 
         return (
           <div key={index} style={{ marginBottom: "1rem", borderBottom: "1px dashed #ccc", paddingBottom: "1rem" }}>
-            {itemTitle && <h3>{itemTitle}</h3>} {/* יציג "burns Degree 1" או "Treatment for burns" */}
+            {itemTitle && <h3>{itemTitle}</h3>} 
             {contentToDisplay}
             {(currentCount === 0 || currentCount === 1) && speakableText && (
               <button
@@ -439,8 +431,8 @@ export default function TreatmentScreen() {
   const { newChat } = useContext(ChatContext);
 
   const initialCaseType = searchParams.get("case_type") || "";
-  const initialDegreesParam = searchParams.get("degrees"); // יכיל "1,1" במקרה זה
-  const initialDegree = searchParams.get("degree"); // יהיה null במקרה זה כי משתמשים ב-degrees
+  const initialDegreesParam = searchParams.get("degrees"); 
+  const initialDegree = searchParams.get("degree"); 
 
   const currentCount = parseInt(searchParams.get("count") || "0", 10);
 
@@ -470,12 +462,11 @@ export default function TreatmentScreen() {
 
       {initialCaseType && (
         <div>
-          {/* שינוי 6: כאן אפשר להשאיר את "Treatment for {initialCaseType}" כי זה תלוי בפרמטר מה-URL */}
           <h3>Treatment for {initialCaseType}</h3> 
           <TreatmentInstructionsDisplay 
             caseType={initialCaseType}
-            degrees={initialDegreesParam} // יהיה "1,1" במקרה זה
-            degree={initialDegree} // יהיה null במקרה זה
+            degrees={initialDegreesParam} 
+            degree={initialDegree} 
             currentCount={currentCount}
           />
           <button
