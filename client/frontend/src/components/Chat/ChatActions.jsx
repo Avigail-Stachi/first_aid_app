@@ -44,26 +44,23 @@ export default function ChatActions() {
         treatmentParams.identifiedDegrees
       )
         ? [...new Set(treatmentParams.identifiedDegrees)].sort((a, b) => a - b)
-        : []; // תנאי 1 (עדיפות גבוהה): אם הועלתה תמונה וזוהו דרגות כלשהן // זהו המצב בעל העדיפות הגבוהה ביותר. גם אם יש serverWarning (כמו "Multiple burn types"), // אנחנו רוצים להציג את הדרגות הספציפיות שזוהו.
+        : []; 
 
       if (
         treatmentParams.hasImageDiagnosis && // יש אבחון תמונה (true)
         uniqueIdentifiedDegrees.length > 0
       ) {
         // וזוהו דרגות ספציפיות (true)
-        url += `&degrees=${uniqueIdentifiedDegrees.join(",")}`; // <-- זה מה שיתבצע!
-      } // תנאי 2: אם אין עדיין אבחון תמונה (אבחון טקסטואלי ראשוני) // או שהשרת מבקש תמונה נוספת (resultAwaitingImage), או שיש serverWarning // מבלי שזוהו דרגות ספציפיות (כמו במקרה שהשרת לא זיהה דרגות אבל נתן אזהרה כללית). // במקרים אלו, נציג הוראות טיפול לכל 3 הדרגות.
-      else if (
+        url += `&degrees=${uniqueIdentifiedDegrees.join(",")}`;
+      } else if (
         !treatmentParams.hasImageDiagnosis || // אין אבחון תמונה (אבחון טקסטואלי)
         treatmentParams.resultAwaitingImage || // השרת עדיין ממתין לתמונה
         (treatmentParams.hasImageDiagnosis && // או יש אבחון תמונה אבל...
           uniqueIdentifiedDegrees.length === 0 && // ...לא זוהו דרגות
           !!treatmentParams.serverWarning)
       ) {
-        // ...ויש אזהרה מהשרת (כמו "תמונה לא ברורה")
         url += `&degrees=1,2,3`;
-      } // תנאי 3: הועלתה תמונה, אך לא זוהו דרגות (uniqueIdentifiedDegrees ריק) // ואין אזהרה מהשרת (כלומר, השרת פשוט לא זיהה כלום באופן ודאי). // במקרה זה, לא נשלח פרמטר degrees כלל, ונעצור את הניווט.
-      else if (
+      } else if (
         treatmentParams.hasImageDiagnosis && // יש אבחון תמונה
         uniqueIdentifiedDegrees.length === 0 && // אבל לא זוהו דרגות
         !treatmentParams.serverWarning
@@ -75,16 +72,14 @@ export default function ChatActions() {
         return; // עוצר את הניווט
       }
     } else {
-      // למקרים שאינם כוויה, נשלח את ה-degree אם קיים
       if (treatmentParams.degree) {
         url += `&degree=${treatmentParams.degree}`;
       }
     }
-    // ***** סיים להחליף פה *****
 
     url += `&count=0`;
     navigate(url);
-  }; // הקוד של isDisabled גם צריך להיות מעודכן כפי שסופק בתשובה הקודמת
+  };
 
   let isDisabled = true;
   if (treatmentParams && typeof treatmentParams.caseType === "string") {
