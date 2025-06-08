@@ -37,9 +37,9 @@ const ChatPage = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-  const shouldLock = isFinalDecision || showImageCapture;
-  setIsUserInputLocked(shouldLock);
-}, [isFinalDecision, showImageCapture, setIsUserInputLocked]);
+    const shouldLock = isFinalDecision || showImageCapture;
+    setIsUserInputLocked(shouldLock);
+  }, [isFinalDecision, showImageCapture, setIsUserInputLocked]);
 
   const handleLocation = useCallback(
     async ({ lat, lng, address }) => {
@@ -74,7 +74,11 @@ const ChatPage = () => {
           }
           setMessages((prev) => [
             ...prev,
-            { text: `Error sending SMS: ${errorText}`, fromUser: false },
+            {
+              text: `Error sending SMS: ${errorText}`,
+              fromUser: false,
+              isSpeakable: true,
+            }, 
           ]);
           return;
         }
@@ -88,10 +92,12 @@ const ChatPage = () => {
             {
               text: `Development mode: SMS was NOT sent.`,
               fromUser: false,
+              isSpeakable: true,
             },
             {
               text: `Message content:\n${data.sent_message}`,
               fromUser: false,
+              isSpeakable: true,
             },
           ]);
         } else if (data.status === "failure") {
@@ -100,14 +106,17 @@ const ChatPage = () => {
             {
               text: `SMS not sent due to error: ${data.error}`,
               fromUser: false,
+              isSpeakable: true,
             },
             {
               text: `Please manually send the following message to MDA:\n${data.manual_message}`,
               fromUser: false,
+              isSpeakable: true,
             },
             {
               text: `Suggestion: ${data.suggestion}`,
               fromUser: false,
+              isSpeakable: true,
             },
           ]);
         } else if (data.status === "success") {
@@ -118,12 +127,14 @@ const ChatPage = () => {
                 address || `(${lat.toFixed(5)}, ${lng.toFixed(5)})`
               }`,
               fromUser: false,
+              isSpeakable: true,
             },
             {
               text:
                 data.message ||
                 "SMS sent to MDA with your location and details.",
               fromUser: false,
+              isSpeakable: true,
             },
           ]);
           setLocationSent(true);
@@ -134,6 +145,7 @@ const ChatPage = () => {
             {
               text: data.message || "Unknown response from server.",
               fromUser: false,
+              isSpeakable: true,
             },
           ]);
         }
@@ -143,6 +155,7 @@ const ChatPage = () => {
           {
             text: `❌ Error sending SMS: ${error.message}. Please send location and info to MDA manually.`,
             fromUser: false,
+            isSpeakable: true,
           },
         ]);
         console.error("Error sending SMS:", error);
@@ -152,7 +165,10 @@ const ChatPage = () => {
   );
   const sendRequest = async () => {
     if (!inputMsg.trim() || isFinalDecision || isUserInputLocked) return;
-    setMessages((prev) => [...prev, { text: inputMsg, fromUser: true }]);
+    setMessages((prev) => [
+      ...prev,
+      { text: inputMsg, fromUser: true, isSpeakable: false },
+    ]);
     const newHistory = [...history, inputMsg];
     setHistory(newHistory);
     setIsLoading(true);
@@ -168,13 +184,14 @@ const ChatPage = () => {
 
       setMessages((prev) => [
         ...prev,
-        { text: data.result, fromUser: false },
+        { text: data.result, fromUser: false, isSpeakable: true },
         ...(data.ambulance_flag
           ? [
               {
                 text: "Ambulance required!",
                 fromUser: false,
                 isAmbulanceAlert: true,
+                isSpeakable: true,
               },
             ]
           : []),
@@ -231,7 +248,7 @@ const ChatPage = () => {
     } catch {
       setMessages((prev) => [
         ...prev,
-        { text: "Error contacting server", fromUser: false },
+        { text: "Error contacting server", fromUser: false, isSpeakable: true },
       ]);
     } finally {
       setIsLoading(false);
@@ -241,7 +258,7 @@ const ChatPage = () => {
   const handleSendAudio = async (blob) => {
     if (isFinalDecision || isUserInputLocked) return;
     const url = URL.createObjectURL(blob);
-    const audioMessage = { audioUrl: url, fromUser: true };
+    const audioMessage = { audioUrl: url, fromUser: true, isSpeakable: false };
     setMessages((prev) => [...prev, audioMessage]);
 
     const formData = new FormData();
@@ -265,7 +282,9 @@ const ChatPage = () => {
 
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.audioUrl === url ? { ...msg, transcript: transcript } : msg
+          msg.audioUrl === url
+            ? { ...msg, transcript: transcript, isSpeakable: false }
+            : msg
         )
       );
 
@@ -295,13 +314,14 @@ const ChatPage = () => {
       const ambulanceFlag = predictData?.ambulance_flag || false;
       setMessages((prev) => [
         ...prev,
-        { text: finalAnswer, fromUser: false },
+        { text: finalAnswer, fromUser: false, isSpeakable: true },
         ...(ambulanceFlag
           ? [
               {
                 text: "Ambulance required!",
                 fromUser: false,
                 isAmbulanceAlert: true,
+                isSpeakable: true,
               },
             ]
           : []),
@@ -362,7 +382,11 @@ const ChatPage = () => {
     } catch (error) {
       setMessages((prev) => [
         ...prev,
-        { text: `Error contacting server: ${error.message}`, fromUser: false },
+        {
+          text: `Error contacting server: ${error.message}`,
+          fromUser: false,
+          isSpeakable: true,
+        },
       ]);
     } finally {
       setIsLoading(false);
@@ -400,6 +424,7 @@ const ChatPage = () => {
                 fromUser: true,
                 isImage: true,
                 imageUrl: imgURL,
+                //isSpeakable: false,
               },
             ])
           }

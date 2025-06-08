@@ -22,7 +22,7 @@ const ChatWindow = ({ messages }) => {
       {messages.length === 0 && (
         <p style={{ textAlign: "center", color: "#888" }}>No messages yet</p>
       )}
-      {messages.map((msg, index) => (
+       {messages.map((msg, index) => (
         <div
           key={index}
           style={{
@@ -32,12 +32,34 @@ const ChatWindow = ({ messages }) => {
             borderRadius: "10px",
             maxWidth: "70%",
             wordWrap: "break-word",
+            display: 'flex', 
+            alignItems: 'center',
           }}
         >
           {msg.isPredictedImage ? (
             <>
-              {msg.text && <p>{msg.text}</p>}{" "}
-              {/* <--- שינוי: מציג את הטקסט אם קיים */}
+              {msg.text && (
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <p style={{ margin: 0, paddingRight: '8px' }}>{msg.text}</p>
+                  {msg.isSpeakable && !msg.fromUser && ( 
+                    <button
+                      onClick={() => speakText(msg.text)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                        color: "#555",
+                        marginLeft: "auto",
+                      }}
+                      aria-label="Speak message"
+                      title="Tap to read the message."
+                    >
+                      🔊
+                    </button>
+                  )}
+                </div>
+              )}
               <img
                 src={msg.imageUrl}
                 alt="Predicted Burn"
@@ -51,7 +73,28 @@ const ChatWindow = ({ messages }) => {
             </>
           ) : msg.isImage ? (
             <>
-              {msg.text && <p>{msg.text}</p>}
+              {msg.text && (
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <p style={{ margin: 0, paddingRight: '8px' }}>{msg.text}</p>
+                  {msg.isSpeakable && !msg.fromUser && (
+                    <button
+                      onClick={() => speakText(msg.text)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                        color: "#555",
+                        marginLeft: "auto",
+                      }}
+                      aria-label="Speak message"
+                      title="Tap to read the message."
+                    >
+                      🔊
+                    </button>
+                  )}
+                </div>
+              )}
               <img
                 src={msg.imageUrl}
                 alt="User Upload"
@@ -64,7 +107,26 @@ const ChatWindow = ({ messages }) => {
               />
             </>
           ) : msg.isAmbulanceAlert ? (
-            <strong style={{ color: "red" }}>{msg.text}</strong>
+            <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}> 
+              <strong style={{ color: "red", margin: 0, paddingRight: '8px' }}>{msg.text}</strong> 
+              {msg.isSpeakable && !msg.fromUser && ( 
+                <button
+                  onClick={() => speakText(msg.text)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "18px",
+                    color: "#555",
+                    marginLeft: "auto", 
+                  }}
+                  aria-label="Speak message"
+                  title="Tap to read the message."
+                >
+                  🔊
+                </button>
+              )}
+            </div>
           ) : msg.audioUrl ? (
             <>
               <audio controls src={msg.audioUrl} />
@@ -79,10 +141,9 @@ const ChatWindow = ({ messages }) => {
               {msg.text}
             </a>
           ) : (
-            <>
-              <p>{msg.text}</p>
-              {/* כפתור רמקול להקראת הטקסט - רק אם יש טקסט ולא תמונה */}
-              {msg.text && (
+            <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}> 
+              <p style={{ margin: 0, paddingRight: '8px' }}>{msg.text}</p> 
+              {msg.isSpeakable && !msg.fromUser && ( 
                 <button
                   onClick={() => speakText(msg.text)}
                   style={{
@@ -91,7 +152,7 @@ const ChatWindow = ({ messages }) => {
                     cursor: "pointer",
                     fontSize: "18px",
                     color: "#555",
-                    marginLeft: "8px",
+                    marginLeft: "auto", 
                   }}
                   aria-label="Speak message"
                   title="Tap to read the message."
@@ -99,7 +160,7 @@ const ChatWindow = ({ messages }) => {
                   🔊
                 </button>
               )}
-            </>
+            </div>
           )}
         </div>
       ))}
