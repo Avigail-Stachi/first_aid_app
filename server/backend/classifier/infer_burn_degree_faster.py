@@ -14,6 +14,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="PIL")
 
 MODEL_PATH = r"C:\Users\User\Projects\first_aid_app\server\backend\data\photos\best_fasterrcnn_model.pth"
 
+
 DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 print(f"משתמש ב- DEVICE: {DEVICE}")
 
@@ -30,7 +31,8 @@ REV_CLASS_MAP = {v: k for k, v in CLASS_MAP.items()}
 def _create_fasterrcnn_model(num_classes):
 
     model = torchvision.models.detection.fasterrcnn_resnet50_fpn(
-        weights=FasterRCNN_ResNet50_FPN_Weights.COCO_V1
+        weights=None
+        #FasterRCNN_ResNet50_FPN_Weights.COCO_V1
     )
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = torchvision.models.detection.faster_rcnn.FastRCNNPredictor(

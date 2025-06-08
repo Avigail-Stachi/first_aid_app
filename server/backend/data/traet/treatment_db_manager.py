@@ -62,10 +62,22 @@ def _get_treatment_data_sync(case_type: str, count: int, degrees: Optional[List[
         '''
         cur.execute(query, (case_type, degree))
         row = cur.fetchone()
-        if row:  # רק אם נמצאה שורה
+        if row:
             raw_results.append(row)
+        else:
+            print(
+                f"DEBUG: _get_treatment_data_sync: No specific degree found for {case_type} with degree {degree}, trying general instruction (degree IS NULL).")
+            query = f'''
+                SELECT {select_columns_str} FROM treatments
+                WHERE case_type = ? AND degree IS NULL;
+            '''
+            cur.execute(query, (case_type,))
+            row = cur.fetchone()
+            if row:
+                raw_results.append(row)
 
-    else:  # טיפול במקרים כלליים ללא דרגה
+
+    else:
         print(f"DEBUG: _get_treatment_data_sync: Handling general case for {case_type} with degree IS NULL.")
         query = f'''
             SELECT {select_columns_str} FROM treatments
@@ -73,7 +85,7 @@ def _get_treatment_data_sync(case_type: str, count: int, degrees: Optional[List[
         '''
         cur.execute(query, (case_type,))
         row = cur.fetchone()
-        if row:  # רק אם נמצאה שורה
+        if row:
             raw_results.append(row)
 
     conn.close()

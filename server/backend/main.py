@@ -9,7 +9,7 @@ from typing import Optional, List, Dict, Any
 #from debugpy.common.log import warning
 from fastapi import FastAPI, Request, HTTPException, File, UploadFile,Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+#from fastapi.responses import FileResponse
 #from pooch.utils import unique_file_name
 from pydantic import BaseModel
 
@@ -20,6 +20,9 @@ import transcribe.transcribeOffline as transcribeOffline
 from data.traet.treatment_db_manager import get_treatment_data
 import classifier.infer_burn_degree_faster as predict_with_faster
 # from typing import Dict
+
+print("Starting FastAPI application...")
+
 
 app = FastAPI()
 
@@ -265,72 +268,91 @@ async def upload_burn_image_faster(image: UploadFile = File(...)):
 
 
 # main.py - רק החלק של האנדפוינט /treatment המתוקן לנתיבים מוחלטים ב-DB
+#
+# @app.get("/treatment")
+# async def get_treatment(
+#         case_type: str = Query(..., description="Type of emergency case"),
+#         count: int = Query(..., ge=0, le=3, description="0=short, 1=detailed, 2=image, 3=video"),
+#         degrees: Optional[str] = Query(None, description="Comma-separated list of severity degrees (e.g., '1', '1,2')"),
+#         degree: Optional[int] = Query(None,
+#                                       description="Severity degree (e.g., 1, 2, 3) for non-burn cases or single burn degree")
+# ):
+#     try:
+#         degrees_list = None
+#         if case_type.lower() == "burns" and degrees:
+#             degrees_list = [d.strip() for d in degrees.split(',') if d.strip()]
+#
+#         result_data_from_db = await get_treatment_data(case_type, count, degrees=degrees_list, degree=degree)
+#
+#         formatted_results = []
+#         if result_data_from_db:
+#             for item in result_data_from_db:
+#                 formatted_item = {
+#                     "id": item.get("id"),
+#                     "case_type": item.get("case_type"),
+#                     "degree": item.get("degree"),
+#                     "title": item.get("title"),
+#                     "description": item.get("description"),
+#                     "image_url": item.get("image_url"),
+#                     "video_url": item.get("video_url")
+#                 }
+#                 formatted_results.append(formatted_item)
+#
+#         return {"result": formatted_results}
+#
+#     except ValueError as ve:
+#         print(f"ValueError in /treatment: {ve}")  # New: Added debug print
+#         raise HTTPException(status_code=400, detail=str(ve))
+#     except Exception as e:
+#         print(f"שגיאת שרת ב-/treatment: {e}")  # New: Added debug print
+#         raise HTTPException(status_code=500, detail=f"שגיאת שרת: {str(e)}")
+
 
 @app.get("/treatment")
 async def get_treatment(
-        case_type: str = Query(..., description="Type of emergency case"),
-        count: int = Query(..., ge=0, le=3, description="0=short, 1=detailed, 2=image, 3=video"),
-        degrees: Optional[str] = Query(None, description="Comma-separated list of severity degrees (e.g., '1', '1,2')"),
-        degree: Optional[int] = Query(None,
-                                      description="Severity degree (e.g., 1, 2, 3) for non-burn cases or single burn degree")
+    case_type: str = Query(..., description="Type of emergency case"),
+    count: int = Query(..., ge=0, le=3, description="0=short, 1=detailed, 2=image, 3=video"),
+    degrees: Optional[str] = Query(None, description="Comma-separated list of severity degrees (e.g., '1', '1,2')"),
+    degree: Optional[int] = Query(None, description="Severity degree (e.g., 1, 2, 3) for non-burn cases or single burn degree")
 ):
     try:
+        print(f"DEBUG: /treatment endpoint called with case_type={case_type}, count={count}, degrees={degrees}, degree={degree}")
+        degrees_list = None
         if case_type.lower() == "burns" and degrees:
             degrees_list = [d.strip() for d in degrees.split(',') if d.strip()]
-            result_data = await get_treatment_data(case_type, count, degrees=degrees_list)
-        elif case_type.lower() != "burns" and degree is not None:
-            result_data = await get_treatment_data(case_type, count, degree=degree)
-        else:
-            result_data = await get_treatment_data(case_type, count)
 
-        if result_data is None:
-            result_data = []
+        result_data_from_db = await get_treatment_data(case_type, count, degrees=degrees_list, degree=degree)
+
+        print(f"DEBUG: result_data_from_db from get_treatment_data: {result_data_from_db}, type: {type(result_data_from_db)}")
 
         formatted_results = []
-        for item in result_data:
-            formatted_item = {
-                "case_type": item.get("case_type"),
-                "degree": item.get("degree"),
-                "short_instruction": item.get("short_instruction"),
-                "detailed_instruction": item.get("detailed_instruction"),
-                "image_url": item.get("image_url"),
-                "video_url": item.get("video_url")
-            }
-            formatted_results.append(formatted_item)
+        if result_data_from_db:
+            if not isinstance(result_data_from_db, list):
+                print(f"ERROR: get_treatment_data returned non-list type: {type(result_data_from_db)}. Data: {result_data_from_db}")
+                raise HTTPException(status_code=500, detail="Internal server error: DB manager returned unexpected type.")
 
-        if len(formatted_results) == 1 and (count == 2 or count == 3):
-            item = formatted_results[0]
-            file_path_from_db = None
-            if count == 2:
-                file_path_from_db = item.get("image_url")
-            elif count == 3:
-                file_path_from_db = item.get("video_url")
+            for item in result_data_from_db:
+                formatted_item = {
+                    "id": item.get("id"),
+                    "case_type": item.get("case_type"),
+                    "degree": item.get("degree"),
+                    "title": item.get("title"),
+                    "description": item.get("description"),
+                    "image_url": item.get("image_url"),
+                    "video_url": item.get("video_url")
+                }
+                formatted_results.append(formatted_item)
 
-            if file_path_from_db and os.path.exists(file_path_from_db):
-                media_type = "application/octet-stream"
-                if file_path_from_db.lower().endswith((".jpg", ".jpeg")):
-                    media_type = "image/jpeg"
-                elif file_path_from_db.lower().endswith((".png")):
-                    media_type = "image/png"
-                elif file_path_from_db.lower().endswith((".gif")):
-                    media_type = "image/gif"
-                elif file_path_from_db.lower().endswith((".mp4")):
-                    media_type = "video/mp4"
-                elif file_path_from_db.lower().endswith((".mov")):
-                    media_type = "video/quicktime"
-                elif file_path_from_db.lower().endswith((".webm")):
-                    media_type = "video/webm"
-                return FileResponse(path=file_path_from_db, media_type=media_type)
-
-            return {"result": formatted_results}
-
+        print(f"DEBUG: Returning from /treatment: {{'result': {formatted_results}}}")
         return {"result": formatted_results}
 
     except ValueError as ve:
+        print(f"ValueError in /treatment: {ve}")
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         print(f"שגיאת שרת ב-/treatment: {e}")
         raise HTTPException(status_code=500, detail=f"שגיאת שרת: {str(e)}")
+
 # @app.post("/upload-image")
 # async def upload_image(image: UploadFile = File(...)):
 #     try:
