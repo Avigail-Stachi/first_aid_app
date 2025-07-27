@@ -1,4 +1,3 @@
-
 // function App() {
 //   const navigate = useNavigate();
 
@@ -367,28 +366,25 @@
 //   );
 // }
 
-import React, { useContext } from "react";
+import React from "react";
 import { Routes, Route } from "react-router-dom";
 import HomeScreen from "./components/HomeScreen";
 import ChatPage from "./components/Chat/ChatPage";
 import TreatmentScreen from "./components/TreatmentScreen";
-import { ChatContext } from "./context/ChatContext";
+//import { ChatContext } from "./context/ChatContext";
 import "./App.css";
 //import { useNavigate } from "react-router-dom";
 export default function App() {
   //const navigate = useNavigate();
-  const {newChat}= useContext(ChatContext);
-
-
-
+  //const {newChat}= useContext(ChatContext);
   return (
     <Routes>
       <Route path="/" element={<HomeScreen />} />
-<Route path="/chat" element={<ChatPage />} />
+      <Route path="/chat" element={<ChatPage />} />
 
       <Route
         path="/treatment"
-        element={<TreatmentScreen newChat={newChat} />}
+        element={<TreatmentScreen />}
       />
     </Routes>
   );

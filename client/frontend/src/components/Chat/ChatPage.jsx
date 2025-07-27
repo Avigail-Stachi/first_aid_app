@@ -4,11 +4,13 @@ import ChatWindow from "./ChatWindow";
 import MessageInput from "./MessageInput";
 import VoiceRecorder from "./VoiceRecorder";
 import LocationFetcher from "./LocationFetcher";
-import ImageCapture from "../ImageCapture";
+//import ImageCapture from "../ImageCapture";
+import ImageUploader from "./image/ImageUploader";
 import ChatActions from "./ChatActions";
 import { ChatContext } from "../../context/ChatContext";
-import { speakText } from "../speach";
+// import { speakText } from "../speech";
 const ChatPage = () => {
+  //אישמ
   const navigate = useNavigate();
   const [lastPrediction, setLastPrediction] = useState("");
   const {
@@ -28,6 +30,7 @@ const ChatPage = () => {
     setTreatmentParams,
     history,
     setHistory,
+    newChat,
   } = useContext(ChatContext);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -73,7 +76,7 @@ const ChatPage = () => {
         const data = await res.json();
         console.log("SMS response:", data);
 
-        if (data.sid.status === "dev_mode") {
+        if (data.status === "dev_mode") {
           setMessages((prev) => [
             ...prev,
             {
@@ -81,11 +84,11 @@ const ChatPage = () => {
               fromUser: false,
             },
             {
-              text: `Message content:\n${data.sid.sent_message}`,
+              text: `Message content:\n${data.sent_message}`,
               fromUser: false,
             },
           ]);
-        } else if (data.sid.status === "failure") {
+        } else if (data.status === "failure") {
           setMessages((prev) => [
             ...prev,
             {
@@ -101,7 +104,7 @@ const ChatPage = () => {
               fromUser: false,
             },
           ]);
-        } else if (data.sid.status === "success") {
+        } else if (data.status === "success") {
           setMessages((prev) => [
             ...prev,
             {
@@ -170,18 +173,37 @@ const ChatPage = () => {
             ]
           : []),
       ]);
+      //speakText(data.result);
       setAmbulance_flag(data.ambulance_flag);
       setIsFinalDecision(data.has_decision);
       setInputMsg("");
       setLastPrediction(data.result);
+
       if (data.has_decision) {
+        const isBurnAwaitingImage =
+          data.result.toLowerCase().includes("burns") &&
+          data.result.toLowerCase().includes("awaiting image");
+
         setTreatmentParams({
-          caseType: data.result,
-          degree: data.degree ?? undefined,
+          caseType: isBurnAwaitingImage
+            ? data.result
+                .replace(" (awaiting image for severity assessment)", "")
+                .trim() // ננקה את ההודעה
+            : data.result,
+          degree: data.degree ?? undefined, // יהיה קיים רק אם זה לא כוויה
+          hasImageDiagnosis: false, // בשלב הטקסטואלי, אין אבחון תמונה
+          identifiedDegrees: [], // אין דרגות זוהות מתמונה בשלב זה
         });
       }
-      if (data.request_image) {
+
+      if (
+        data.result &&
+        data.result.toLowerCase().includes("burns") &&
+        data.result.toLowerCase().includes("awaiting image")
+      ) {
         setShowImageCapture(true);
+      } else {
+        setShowImageCapture(false);
       }
     } catch {
       setMessages((prev) => [
@@ -260,10 +282,43 @@ const ChatPage = () => {
             ]
           : []),
       ]);
+      //speakText(finalAnswer);
 
       setHistory(newHistory);
       setAmbulance_flag(ambulanceFlag);
       setIsFinalDecision(finalDecisionFlag);
+      setLastPrediction(finalAnswer);
+
+      // if (finalDecisionFlag) {
+      //   setTreatmentParams({
+      //     caseType: finalAnswer,
+      //     degree: predictData?.degree ?? undefined,
+      //   });
+      // }
+      if (finalDecisionFlag) {
+        const isBurnAwaitingImage =
+          finalAnswer.toLowerCase().includes("burns") &&
+          finalAnswer.toLowerCase().includes("awaiting image");
+        setTreatmentParams({
+          caseType: isBurnAwaitingImage
+            ? finalAnswer
+                .replace(" (awaiting image for severity assessment)", "")
+                .trim()
+            : finalAnswer,
+          degree: predictData?.degree ?? undefined,
+          hasImageDiagnosis: false,
+          identifiedDegrees: [],
+        });
+      }
+      if (
+        finalAnswer &&
+        finalAnswer.toLowerCase().includes("burns") &&
+        finalAnswer.toLowerCase().includes("awaiting image")
+      ) {
+        setShowImageCapture(true);
+      } else {
+        setShowImageCapture(false);
+      }
     } catch (error) {
       setMessages((prev) => [
         ...prev,
@@ -274,16 +329,6 @@ const ChatPage = () => {
     }
   };
 
-  const newChat = () => {
-    setMessages([]);
-    setInputMsg("");
-    setHistory([]);
-    setAmbulance_flag(false);
-    setIsFinalDecision(false);
-    setLocationSent(false);
-    setShowImageCapture(false);
-    setTreatmentParams({});
-  };
 
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", padding: "2rem" }}>
@@ -297,10 +342,27 @@ const ChatPage = () => {
       />
       {!isFinalDecision && <VoiceRecorder onSendAudio={handleSendAudio} />}
       {ambulance_flag && isFinalDecision && !locationSent && (
-        <LocationFetcher onLocation={handleLocation} 
+        <LocationFetcher onLocation={handleLocation} />
+      )}
+
+      {showImageCapture && (
+        <ImageUploader
+          onImageSend={(imgURL) =>
+            setMessages((prev) => [
+              ...prev,
+              {
+                text: `Image uploaded successfully: ${imgURL}`,
+                fromUser: true,
+                isImage: true,
+                imageUrl: imgURL,
+              },
+            ])
+          }
+          onCancel={() => setShowImageCapture(false)}
         />
       )}
-      {showImageCapture && (
+      {/* Uncomment if you want to use the ImageCapture component */}
+      {/* {showImageCapture && (
         <ImageCapture
           onCancel={() => setShowImageCapture(false)}
           onCapture={(result) => {
@@ -311,12 +373,13 @@ const ChatPage = () => {
             setShowImageCapture(false);
           }}
         />
-      )}
-      <ChatActions
+      )} */}
+      <ChatActions />
+      {/* <ChatActions
         newChat={newChat}
         treatmentParams={treatmentParams}
         navigate={navigate}
-      />
+      /> */}
     </div>
   );
 };
