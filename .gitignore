@@ -35,3 +35,8 @@ coverage/
 
 # Optional: Ignore system files
 Thumbs.db
+
+/ספר פרויקט.docx
+/ספר פרויקט.pdf
+
+server/backend/data/photos/best_fasterrcnn_model.pth

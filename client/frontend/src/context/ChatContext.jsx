@@ -16,8 +16,10 @@ export const ChatProvider = ({ children }) => {
     degree: undefined, // עבור מקרים שאינם כוויות, או כוויה עם דרגה בודדת מהאבחון הטקסטואלי
     hasImageDiagnosis: false, // האם האבחון האחרון כלל תמונה
     identifiedDegrees: [], // מערך של דרגות כוויה זוהות מהתמונה (לדוגמה: [1, 2])
+    predictImageBase64: null,
   });
-  
+  const [isUserInputLocked, setIsUserInputLocked] = useState(false);
+
   const navigate = useNavigate();
 
   const newChat = () => {
@@ -34,7 +36,9 @@ export const ChatProvider = ({ children }) => {
       degree: undefined,
       hasImageDiagnosis: false,
       identifiedDegrees: [],
+      predictImageBase64: null,
     });
+    setIsUserInputLocked(false);
     navigate("/chat");
   };
 
@@ -58,6 +62,8 @@ export const ChatProvider = ({ children }) => {
         treatmentParams,
         setTreatmentParams,
         newChat,
+        isUserInputLocked,
+        setIsUserInputLocked,
       }}
     >
       {children}

@@ -11,6 +11,10 @@ def get_treatment_data(case_type, count, degree=None, db_path=DB_PATH):
         2: "image_url",
         3: "video_url"
     }
+<<<<<<< HEAD
+=======
+
+>>>>>>> a2e585b4e4476563c462da138b5a43a0b2a7f659
     if count < 0 or count > 3:
         raise ValueError("count must be between 0 and 3")
     column = column_map[count]

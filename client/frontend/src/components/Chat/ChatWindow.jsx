@@ -1,103 +1,170 @@
-import React from "react";
+import React, {useEffect,useRef} from "react";
 import { speakText } from "../speech";
 const ChatWindow = ({ messages }) => {
-  return (
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
+    
+    return (
     <div
       style={{
         border: "1px solid #ccc",
-        borderRadius: "8px",
         padding: "1rem",
         height: "400px",
         overflowY: "auto",
-        backgroundColor: "#f9f9f9",
-        marginBottom: "1rem",
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.5rem",
       }}
     >
       {messages.length === 0 && (
         <p style={{ textAlign: "center", color: "#888" }}>No messages yet</p>
       )}
-      {messages.map((msg, index) => (
+       {messages.map((msg, index) => (
         <div
           key={index}
           style={{
-            marginBottom: "1rem",
-            textAlign: msg.fromUser ? "right" : "left",
+            alignSelf: msg.fromUser ? "flex-end" : "flex-start",
+            backgroundColor: msg.fromUser ? "#e0ffe0" : "#f0f0f0",
+            padding: "0.5rem 1rem",
+            borderRadius: "10px",
+            maxWidth: "70%",
+            wordWrap: "break-word",
+            display: 'flex', 
+            alignItems: 'center',
           }}
         >
-          {msg.isAmbulanceAlert && (
-            <div
-              style={{
-                backgroundColor: "#ffdddd",
-                color: "#b30000",
-                border: "2px solid red",
-                borderRadius: "10px",
-                padding: "12px",
-                fontWeight: "bold",
-                maxWidth: "80%",
-                margin: msg.fromUser ? "0 0 0 auto" : "0 auto 0 0",
-              }}
-            >
-              🚨 Emergency! Ambulance needed
-            </div>
-          )}
-            {msg.text && (
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                backgroundColor: msg.fromUser ? "#DCF8C6" : "#EAEAEA",
-                color: "#333",
-                padding: "8px 12px",
-                borderRadius: "15px",
-                maxWidth: "80%",
-                wordWrap: "break-word",
-                margin: 0,
-              }}
-            >
-              {msg.isLink ? (
-                <a
-                  href={msg.text}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    color: "#1a0dab",
-                    textDecoration: "underline",
-                    marginRight: "8px",
-                  }}
-                >
-                  {msg.text}
-                </a>
-              ) : (
-                <span style={{ marginRight: "8px" }}>{msg.text}</span>
+          {msg.isPredictedImage ? (
+            <>
+              {msg.text && (
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <p style={{ margin: 0, paddingRight: '8px' }}>{msg.text}</p>
+                  {msg.isSpeakable && !msg.fromUser && ( 
+                    <button
+                      onClick={() => speakText(msg.text)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                        color: "#555",
+                        marginLeft: "auto",
+                      }}
+                      aria-label="Speak message"
+                      title="Tap to read the message."
+                    >
+                      🔊
+                    </button>
+                  )}
+                </div>
               )}
-
-              {/* כפתור רמקול להקראת הטקסט */}
-              <button
-                onClick={() => speakText(msg.text)}
+              <img
+                src={msg.imageUrl}
+                alt="Predicted Burn"
                 style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "18px",
-                  color: "#555",
+                  maxWidth: "100%",
+                  height: "auto",
+                  borderRadius: "5px",
+                  marginTop: "5px",
                 }}
-                aria-label="Speak message"
-                title="הקש להקראת ההודעה"
-              >
-                🔊
-              </button>
+              />
+            </>
+          ) : msg.isImage ? (
+            <>
+              {msg.text && (
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <p style={{ margin: 0, paddingRight: '8px' }}>{msg.text}</p>
+                  {msg.isSpeakable && !msg.fromUser && (
+                    <button
+                      onClick={() => speakText(msg.text)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                        color: "#555",
+                        marginLeft: "auto",
+                      }}
+                      aria-label="Speak message"
+                      title="Tap to read the message."
+                    >
+                      🔊
+                    </button>
+                  )}
+                </div>
+              )}
+              <img
+                src={msg.imageUrl}
+                alt="User Upload"
+                style={{
+                  maxWidth: "100%",
+                  height: "auto",
+                  borderRadius: "5px",
+                  marginTop: "5px",
+                }}
+              />
+            </>
+          ) : msg.isAmbulanceAlert ? (
+            <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}> 
+              <strong style={{ color: "red", margin: 0, paddingRight: '8px' }}>{msg.text}</strong> 
+              {msg.isSpeakable && !msg.fromUser && ( 
+                <button
+                  onClick={() => speakText(msg.text)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "18px",
+                    color: "#555",
+                    marginLeft: "auto", 
+                  }}
+                  aria-label="Speak message"
+                  title="Tap to read the message."
+                >
+                  🔊
+                </button>
+              )}
             </div>
-          )}
-
-          {msg.audioUrl && (
-            <audio
-              controls
-              src={msg.audioUrl}
-              style={{ marginTop: "5px", maxWidth: "80%" }}
-            />
+          ) : msg.audioUrl ? (
+            <>
+              <audio controls src={msg.audioUrl} />
+              {msg.transcript && (
+                <p style={{ fontSize: "0.8em", color: "#666" }}>
+                  (Transcript: {msg.transcript})
+                </p>
+              )}
+            </>
+          ) : msg.isLink ? (
+            <a href={msg.text} target="_blank" rel="noopener noreferrer">
+              {msg.text}
+            </a>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}> 
+              <p style={{ margin: 0, paddingRight: '8px' }}>{msg.text}</p> 
+              {msg.isSpeakable && !msg.fromUser && ( 
+                <button
+                  onClick={() => speakText(msg.text)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "18px",
+                    color: "#555",
+                    marginLeft: "auto", 
+                  }}
+                  aria-label="Speak message"
+                  title="Tap to read the message."
+                >
+                  🔊
+                </button>
+              )}
+            </div>
           )}
         </div>
       ))}
+      <div ref={messagesEndRef} />
     </div>
   );
 };

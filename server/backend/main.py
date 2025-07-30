@@ -2,27 +2,57 @@ import os
 import uvicorn
 import time
 import shutil
+<<<<<<< HEAD
 
 from typing import Optional
 from fastapi import FastAPI, Request, HTTPException, File, UploadFile,Query
 from fastapi.middleware.cors import CORSMiddleware
 from pooch.utils import unique_file_name
+=======
+import base64
+
+from typing import Optional, List, Dict, Any
+
+#from debugpy.common.log import warning
+from fastapi import FastAPI, Request, HTTPException, File, UploadFile,Query
+from fastapi.middleware.cors import CORSMiddleware
+#from fastapi.responses import FileResponse
+#from pooch.utils import unique_file_name
+>>>>>>> a2e585b4e4476563c462da138b5a43a0b2a7f659
 from pydantic import BaseModel
 
 import classifier.predict as class_pred
 import contact.sms_sender as sms_sender
 import transcribe.transcribeOffline as transcribeOffline
+<<<<<<< HEAD
 import classifier.predict_photo as class_pred_photo
 from data.traet.treat_from_db import get_treatment_data
 # from typing import Dict
 
+=======
+#import classifier.predict_photo as class_pred_photo
+from data.traet.treatment_db_manager import get_treatment_data
+import classifier.infer_burn_degree_faster as predict_with_faster
+# from typing import Dict
+
+print("Starting FastAPI application...")
+
+
+>>>>>>> a2e585b4e4476563c462da138b5a43a0b2a7f659
 app = FastAPI()
 
 
 TEMP_UPLOAD_DIR = "temp_uploads"
 UPLOAD_DIR = "uploads"
+<<<<<<< HEAD
 os.makedirs(TEMP_UPLOAD_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+=======
+PREDICTED_IMAGES_DIR = "predicted_images"
+os.makedirs(TEMP_UPLOAD_DIR, exist_ok=True)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(PREDICTED_IMAGES_DIR, exist_ok=True)
+>>>>>>> a2e585b4e4476563c462da138b5a43a0b2a7f659
 
 #כשהמצב הוא לא פיתוח אז לעשות בקומנד
 #set ENVIRONMENT=production
@@ -53,6 +83,15 @@ app.add_middleware(
 print("ENVIRONMENT:", ENVIRONMENT)
 print("CORS origins:", origins)
 
+<<<<<<< HEAD
+=======
+try:
+    predict_with_faster.load_inference_model()
+    print("Faster inference model loaded successfully.")
+except (FileNotFoundError, RuntimeError) as e:
+    print(f"Critical error loading faster inference model: {e}")
+    exit()
+>>>>>>> a2e585b4e4476563c462da138b5a43a0b2a7f659
 
 
 class RequestBody(BaseModel):
@@ -190,6 +229,155 @@ async def send_sms(location:Location):
             "manual_message": result["manual_message"],
             "technical_details": result["technical_details"]
         })
+<<<<<<< HEAD
+=======
+
+
+
+
+@app.post('/upload-burn-image-faster')
+async def upload_burn_image_faster(image: UploadFile = File(...)):
+    try:
+        if not image.filename.lower().endswith((".jpg", ".jpeg", ".png")):
+            raise HTTPException(status_code=400, detail="Unsupported image format.")
+
+        timestamp = int(time.time())
+        unique_filename = f"{timestamp}_{image.filename}"
+        file_location = os.path.join(UPLOAD_DIR, unique_filename)
+        with open(file_location, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+
+        detected_objects, output_image_path = predict_with_faster.predict_on_image(file_location, PREDICTED_IMAGES_DIR,
+                                                                                   score_threshold=0.4)
+
+        if os.path.exists(file_location):
+            os.remove(file_location)
+
+        burn_degrees_detected = sorted(list(set([obj['label'] for obj in detected_objects])))
+        result_message =""
+        has_decision_after_image = False
+        warning= None
+
+        if not burn_degrees_detected:
+            warning = "⚠️ No burn detected with sufficient confidence. Please try another image or describe the injury."
+            result_message = "burns (awaiting image for severity assessment)"
+        elif len(burn_degrees_detected) == 1:
+            degree_str = burn_degrees_detected[0].replace('degree_', '')
+            result_message = f"burns (degree {degree_str})"
+            has_decision_after_image = True
+        else:
+            degrees_formatted = ", ".join([d.replace('degree_', '') for d in burn_degrees_detected])
+            result_message = f"burns (degrees {degrees_formatted})"
+            warning = "⚠️ Multiple burn types detected. Treatment may vary."
+            has_decision_after_image = True
+
+        with open(output_image_path, "rb") as img_file:
+            encoded_image_string = base64.b64encode(img_file.read()).decode('utf-8')
+
+        if os.path.exists(output_image_path):
+            os.remove(output_image_path)
+
+        return {
+            "status": "success",
+            "filename": image.filename,
+            "detected_objects": detected_objects,
+            "result": result_message,
+            "has_decision": has_decision_after_image,
+            "warning": warning,
+            "predicted_image_base64": encoded_image_string
+        }
+
+    except Exception as e:
+        print(f"שגיאה בעיבוד תמונה עם Faster R-CNN: {e}")
+        raise HTTPException(status_code=500, detail=f"Error processing the image: {str(e)}")
+
+# main.py - רק החלק של האנדפוינט /treatment המתוקן לנתיבים מוחלטים ב-DB
+#
+# @app.get("/treatment")
+# async def get_treatment(
+#         case_type: str = Query(..., description="Type of emergency case"),
+#         count: int = Query(..., ge=0, le=3, description="0=short, 1=detailed, 2=image, 3=video"),
+#         degrees: Optional[str] = Query(None, description="Comma-separated list of severity degrees (e.g., '1', '1,2')"),
+#         degree: Optional[int] = Query(None,
+#                                       description="Severity degree (e.g., 1, 2, 3) for non-burn cases or single burn degree")
+# ):
+#     try:
+#         degrees_list = None
+#         if case_type.lower() == "burns" and degrees:
+#             degrees_list = [d.strip() for d in degrees.split(',') if d.strip()]
+#
+#         result_data_from_db = await get_treatment_data(case_type, count, degrees=degrees_list, degree=degree)
+#
+#         formatted_results = []
+#         if result_data_from_db:
+#             for item in result_data_from_db:
+#                 formatted_item = {
+#                     "id": item.get("id"),
+#                     "case_type": item.get("case_type"),
+#                     "degree": item.get("degree"),
+#                     "title": item.get("title"),
+#                     "description": item.get("description"),
+#                     "image_url": item.get("image_url"),
+#                     "video_url": item.get("video_url")
+#                 }
+#                 formatted_results.append(formatted_item)
+#
+#         return {"result": formatted_results}
+#
+#     except ValueError as ve:
+#         print(f"ValueError in /treatment: {ve}")  # New: Added debug print
+#         raise HTTPException(status_code=400, detail=str(ve))
+#     except Exception as e:
+#         print(f"שגיאת שרת ב-/treatment: {e}")  # New: Added debug print
+#         raise HTTPException(status_code=500, detail=f"שגיאת שרת: {str(e)}")
+
+
+@app.get("/treatment")
+async def get_treatment(
+    case_type: str = Query(..., description="Type of emergency case"),
+    count: int = Query(..., ge=0, le=3, description="0=short, 1=detailed, 2=image, 3=video"),
+    degrees: Optional[str] = Query(None, description="Comma-separated list of severity degrees (e.g., '1', '1,2')"),
+    degree: Optional[int] = Query(None, description="Severity degree (e.g., 1, 2, 3) for non-burn cases or single burn degree")
+):
+    try:
+        print(f"DEBUG: /treatment endpoint called with case_type={case_type}, count={count}, degrees={degrees}, degree={degree}")
+        degrees_list = None
+        if case_type.lower() == "burns" and degrees:
+            degrees_list = [d.strip() for d in degrees.split(',') if d.strip()]
+
+        result_data_from_db = await get_treatment_data(case_type, count, degrees=degrees_list, degree=degree)
+
+        print(f"DEBUG: result_data_from_db from get_treatment_data: {result_data_from_db}, type: {type(result_data_from_db)}")
+
+        formatted_results = []
+        if result_data_from_db:
+            if not isinstance(result_data_from_db, list):
+                print(f"ERROR: get_treatment_data returned non-list type: {type(result_data_from_db)}. Data: {result_data_from_db}")
+                raise HTTPException(status_code=500, detail="Internal server error: DB manager returned unexpected type.")
+
+            for item in result_data_from_db:
+                formatted_item = {
+                    "id": item.get("id"),
+                    "case_type": item.get("case_type"),
+                    "degree": item.get("degree"),
+                    "title": item.get("title"),
+                    "description": item.get("description"),
+                    "image_url": item.get("image_url"),
+                    "video_url": item.get("video_url")
+                }
+                formatted_results.append(formatted_item)
+
+        print(f"DEBUG: Returning from /treatment: {{'result': {formatted_results}}}")
+        return {"result": formatted_results}
+
+    except ValueError as ve:
+        print(f"ValueError in /treatment: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        print(f"שגיאת שרת ב-/treatment: {e}")
+        raise HTTPException(status_code=500, detail=f"שגיאת שרת: {str(e)}")
+
+>>>>>>> a2e585b4e4476563c462da138b5a43a0b2a7f659
 # @app.post("/upload-image")
 # async def upload_image(image: UploadFile = File(...)):
 #     try:
@@ -222,6 +410,7 @@ async def send_sms(location:Location):
 #     except Exception as e:
 #         print(f"Error processing image: {e}")
 #         raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
+<<<<<<< HEAD
 @app.post("/upload-image")
 async def upload_image(image: UploadFile = File(...)):
     try:
@@ -282,6 +471,70 @@ async def upload_image(image: UploadFile = File(...)):
     except Exception as e:
         print(f"Error processing image: {e}")
         raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
+=======
+# @app.post("/upload-image")
+# async def upload_image(image: UploadFile = File(...)):
+#     try:
+#         if not image.filename.lower().endswith((".jpg", ".jpeg", ".png")):
+#             raise HTTPException(status_code=400, detail="Unsupported image format.")
+#
+#         upload_dir = "uploads"
+#         os.makedirs(upload_dir, exist_ok=True)  # ודא שהתיקייה קיימת
+#
+#         unique_filename = f"{int(time.time())}_{image.filename}"
+#         file_location = os.path.join(upload_dir, unique_filename)
+#         with open(file_location, "wb") as buffer:
+#             shutil.copyfileobj(image.file, buffer)
+#
+#         prediction = class_pred_photo.predict_multi_label(file_location, threshold=0.4)
+#
+#         class_names = {
+#             0: "First-degree burn",
+#             1: "Second-degree burn",
+#             2: "Third-degree burn",
+#         }
+#         positive_classes_idx = prediction["positive_classes"]
+#         positive_classes_names = [class_names.get(idx, f"Class_{idx}") for idx in positive_classes_idx]
+#         uncertainty_gap = prediction["uncertainty_gap"]
+#
+#         warning = None
+#         has_decision_after_image = False
+#         result_for_frontend = ""
+#
+#         if len(positive_classes_idx) == 0:
+#             warning = "⚠️ No burn detected with sufficient confidence. Please try another image or describe the injury."
+#             result_for_frontend = "burns (awaiting image for severity assessment)"  # נחזיר מצב של צורך בתמונה
+#             has_decision_after_image = False  # עדיין לא החלטה סופית
+#         elif len(positive_classes_idx) > 0 and uncertainty_gap < 0.1:  # סף נמוך יותר לאי וודאות
+#             warning = "⚠️ Low confidence in classification. Try another angle or lighting."
+#             result_for_frontend = "burns (awaiting image for severity assessment)"  # גם כאן, נבקש תמונה נוספת או נשאיר במצב של חוסר וודאות
+#             has_decision_after_image = False  # עדיין לא החלטה סופית
+#         elif len(positive_classes_idx) > 1:
+#             warning = "⚠️ Multiple burn types detected. Treatment may vary."
+#             result_for_frontend = f"burns (degrees {', '.join(map(str, [idx + 1 for idx in positive_classes_idx]))})"
+#             has_decision_after_image = True  # זו החלטה מספקת לטיפול רב-דרגתי
+#         else:  # זוהתה דרגה אחת עם מספיק ביטחון
+#             result_for_frontend = f"burns (degree {positive_classes_idx[0] + 1})"
+#             has_decision_after_image = True
+#
+#         return {
+#             "status": "success",
+#             "filename": image.filename,
+#             "positive_classes_idx": positive_classes_idx,  # האינדקסים (0,1,2)
+#             "positive_classes_names": positive_classes_names,  # שמות הדרגות (First-degree burn)
+#             "all_probabilities": [round(float(p), 4) for p in prediction["all_probabilities"]],
+#             "uncertainty_gap": round(float(uncertainty_gap), 4),
+#             "warning": warning,
+#             "result": result_for_frontend,  # התשובה הסופית של המודל (מה יופיע בצ'אט ומה ייכנס ל-treatmentParams)
+#             "has_decision": has_decision_after_image  # האם זו החלטה סופית?
+#         }
+#
+#     except Exception as e:
+#         print(f"Error processing image: {e}")
+#         raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
+#
+
+>>>>>>> a2e585b4e4476563c462da138b5a43a0b2a7f659
 
 
 #
@@ -314,6 +567,7 @@ async def upload_image(image: UploadFile = File(...)):
     # except Exception as e:
     #     print(f"Error processing image: {e}")
     #     raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
+<<<<<<< HEAD
 @app.get("/treatment")
 async def get_treatment(
     case_type: str = Query(..., description="Type of emergency case"),
@@ -329,6 +583,23 @@ async def get_treatment(
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+=======
+# @app.get("/treatment")
+# async def get_treatment(
+#     case_type: str = Query(..., description="Type of emergency case"),
+#     count: int = Query(..., ge=0, le=3, description="0=short, 1=detailed, 2=image, 3=video"),
+#     degree: Optional[int] = Query(None, description="Severity degree (e.g., 1, 2, 3)")
+# ):
+#     try:
+#         result = get_treatment_data(case_type, count, degree)
+#         if result is None:
+#             raise HTTPException(status_code=404, detail="No treatment data found")
+#         return {"result": result}
+#     except ValueError as ve:
+#         raise HTTPException(status_code=400, detail=str(ve))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+>>>>>>> a2e585b4e4476563c462da138b5a43a0b2a7f659
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

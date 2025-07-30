@@ -1,1 +1,6 @@
+<<<<<<< HEAD
 I spilled boiling oil on my friend and he's all red.
+=======
+burns
+I spilled boiling oil on my friend and he's all red.
+>>>>>>> a2e585b4e4476563c462da138b5a43a0b2a7f659

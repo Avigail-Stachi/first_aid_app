@@ -10,7 +10,12 @@ import numpy as np
 import json
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+<<<<<<< HEAD
 MODEL_PATH = os.path.join(BASE_DIR, '..', 'model','text', 'saved_model1.keras')
+=======
+MODEL_PATH = r"C:\Users\User\Projects\first_aid_app\server\backend\model\text\saved_model1.keras"
+# MODEL_PATH = os.path.join(BASE_DIR, '..', 'model','text', 'saved_model1.keras')
+>>>>>>> a2e585b4e4476563c462da138b5a43a0b2a7f659
 MODEL_BINARY_PATH= os.path.join(BASE_DIR, '..', 'model','ambulance', 'saved_model_binary.keras')
 if not os.path.exists(MODEL_PATH):
     raise FileNotFoundError(f"Model file not found at {MODEL_PATH}")

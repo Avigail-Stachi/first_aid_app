@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useCallback, useContext, useEffect } from "react";
+//import { useNavigate } from "react-router-dom";
 import ChatWindow from "./ChatWindow";
 import MessageInput from "./MessageInput";
 import VoiceRecorder from "./VoiceRecorder";
@@ -10,8 +10,7 @@ import ChatActions from "./ChatActions";
 import { ChatContext } from "../../context/ChatContext";
 // import { speakText } from "../speech";
 const ChatPage = () => {
-  //אישמ
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
   const [lastPrediction, setLastPrediction] = useState("");
   const {
     messages,
@@ -26,14 +25,21 @@ const ChatPage = () => {
     setLocationSent,
     showImageCapture,
     setShowImageCapture,
-    treatmentParams,
+    //treatmentParams,
     setTreatmentParams,
     history,
     setHistory,
-    newChat,
+    //newChat,
+    isUserInputLocked,
+    setIsUserInputLocked,
   } = useContext(ChatContext);
 
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const shouldLock = isFinalDecision || showImageCapture;
+    setIsUserInputLocked(shouldLock);
+  }, [isFinalDecision, showImageCapture, setIsUserInputLocked]);
 
   const handleLocation = useCallback(
     async ({ lat, lng, address }) => {
@@ -68,7 +74,11 @@ const ChatPage = () => {
           }
           setMessages((prev) => [
             ...prev,
-            { text: `Error sending SMS: ${errorText}`, fromUser: false },
+            {
+              text: `Error sending SMS: ${errorText}`,
+              fromUser: false,
+              isSpeakable: true,
+            },
           ]);
           return;
         }
@@ -82,10 +92,12 @@ const ChatPage = () => {
             {
               text: `Development mode: SMS was NOT sent.`,
               fromUser: false,
+              isSpeakable: true,
             },
             {
               text: `Message content:\n${data.sent_message}`,
               fromUser: false,
+              isSpeakable: true,
             },
           ]);
         } else if (data.status === "failure") {
@@ -94,14 +106,17 @@ const ChatPage = () => {
             {
               text: `SMS not sent due to error: ${data.error}`,
               fromUser: false,
+              isSpeakable: true,
             },
             {
               text: `Please manually send the following message to MDA:\n${data.manual_message}`,
               fromUser: false,
+              isSpeakable: true,
             },
             {
               text: `Suggestion: ${data.suggestion}`,
               fromUser: false,
+              isSpeakable: true,
             },
           ]);
         } else if (data.status === "success") {
@@ -112,12 +127,14 @@ const ChatPage = () => {
                 address || `(${lat.toFixed(5)}, ${lng.toFixed(5)})`
               }`,
               fromUser: false,
+              isSpeakable: true,
             },
             {
               text:
                 data.message ||
                 "SMS sent to MDA with your location and details.",
               fromUser: false,
+              isSpeakable: true,
             },
           ]);
           setLocationSent(true);
@@ -128,6 +145,7 @@ const ChatPage = () => {
             {
               text: data.message || "Unknown response from server.",
               fromUser: false,
+              isSpeakable: true,
             },
           ]);
         }
@@ -137,6 +155,7 @@ const ChatPage = () => {
           {
             text: `❌ Error sending SMS: ${error.message}. Please send location and info to MDA manually.`,
             fromUser: false,
+            isSpeakable: true,
           },
         ]);
         console.error("Error sending SMS:", error);
@@ -145,8 +164,11 @@ const ChatPage = () => {
     [setMessages, setLocationSent, history, lastPrediction]
   );
   const sendRequest = async () => {
-    if (!inputMsg.trim() || isFinalDecision) return;
-    setMessages((prev) => [...prev, { text: inputMsg, fromUser: true }]);
+    if (!inputMsg.trim() || isFinalDecision || isUserInputLocked) return;
+    setMessages((prev) => [
+      ...prev,
+      { text: inputMsg, fromUser: true, isSpeakable: false },
+    ]);
     const newHistory = [...history, inputMsg];
     setHistory(newHistory);
     setIsLoading(true);
@@ -162,13 +184,14 @@ const ChatPage = () => {
 
       setMessages((prev) => [
         ...prev,
-        { text: data.result, fromUser: false },
+        { text: data.result, fromUser: false, isSpeakable: true },
         ...(data.ambulance_flag
           ? [
               {
                 text: "Ambulance required!",
                 fromUser: false,
                 isAmbulanceAlert: true,
+                isSpeakable: true,
               },
             ]
           : []),
@@ -179,22 +202,39 @@ const ChatPage = () => {
       setInputMsg("");
       setLastPrediction(data.result);
 
-      if (data.has_decision) {
-        const isBurnAwaitingImage =
-          data.result.toLowerCase().includes("burns") &&
-          data.result.toLowerCase().includes("awaiting image");
+      // if (data.has_decision) {
+      //   const isBurnAwaitingImage =
+      //     data.result.toLowerCase().includes("burns") &&
+      //     data.result.toLowerCase().includes("awaiting image");
 
-        setTreatmentParams({
-          caseType: isBurnAwaitingImage
-            ? data.result
-                .replace(" (awaiting image for severity assessment)", "")
-                .trim() // ננקה את ההודעה
-            : data.result,
-          degree: data.degree ?? undefined, // יהיה קיים רק אם זה לא כוויה
-          hasImageDiagnosis: false, // בשלב הטקסטואלי, אין אבחון תמונה
-          identifiedDegrees: [], // אין דרגות זוהות מתמונה בשלב זה
-        });
-      }
+      //   setTreatmentParams({
+      //     caseType: isBurnAwaitingImage
+      //       ? data.result
+      //           .replace(" (awaiting image for severity assessment)", "")
+      //           .trim() // ננקה את ההודעה
+      //       : data.result,
+      //     degree: data.degree ?? undefined, // יהיה קיים רק אם זה לא כוויה
+      //     hasImageDiagnosis: false, // בשלב הטקסטואלי, אין אבחון תמונה
+      //     identifiedDegrees: [], // אין דרגות זוהות מתמונה בשלב זה
+      //     predictImageBase64: null, // אין תמונה בשלב זה
+      //   });
+      // }
+
+      const isBurnAwaitingImage =
+        data.result.toLowerCase().includes("burns") &&
+        data.result.toLowerCase().includes("awaiting image");
+
+      setTreatmentParams({
+        caseType: isBurnAwaitingImage
+          ? data.result
+              .replace(" (awaiting image for severity assessment)", "")
+              .trim()
+          : data.result,
+        degree: data.degree ?? undefined, // יהיה קיים רק אם זה לא כוויה
+        hasImageDiagnosis: false, // בשלב הטקסטואלי, אין אבחון תמונה
+        identifiedDegrees: [], // אין דרגות זוהות מתמונה בשלב זה
+        predictImageBase64: null, // אין תמונה בשלב זה
+      });
 
       if (
         data.result &&
@@ -208,7 +248,7 @@ const ChatPage = () => {
     } catch {
       setMessages((prev) => [
         ...prev,
-        { text: "Error contacting server", fromUser: false },
+        { text: "Error contacting server", fromUser: false, isSpeakable: true },
       ]);
     } finally {
       setIsLoading(false);
@@ -216,8 +256,9 @@ const ChatPage = () => {
   };
 
   const handleSendAudio = async (blob) => {
+    if (isFinalDecision || isUserInputLocked) return;
     const url = URL.createObjectURL(blob);
-    const audioMessage = { audioUrl: url, fromUser: true };
+    const audioMessage = { audioUrl: url, fromUser: true, isSpeakable: false };
     setMessages((prev) => [...prev, audioMessage]);
 
     const formData = new FormData();
@@ -241,7 +282,9 @@ const ChatPage = () => {
 
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.audioUrl === url ? { ...msg, transcript: transcript } : msg
+          msg.audioUrl === url
+            ? { ...msg, transcript: transcript, isSpeakable: false }
+            : msg
         )
       );
 
@@ -271,13 +314,14 @@ const ChatPage = () => {
       const ambulanceFlag = predictData?.ambulance_flag || false;
       setMessages((prev) => [
         ...prev,
-        { text: finalAnswer, fromUser: false },
+        { text: finalAnswer, fromUser: false, isSpeakable: true },
         ...(ambulanceFlag
           ? [
               {
                 text: "Ambulance required!",
                 fromUser: false,
                 isAmbulanceAlert: true,
+                isSpeakable: true,
               },
             ]
           : []),
@@ -295,21 +339,37 @@ const ChatPage = () => {
       //     degree: predictData?.degree ?? undefined,
       //   });
       // }
-      if (finalDecisionFlag) {
-        const isBurnAwaitingImage =
-          finalAnswer.toLowerCase().includes("burns") &&
-          finalAnswer.toLowerCase().includes("awaiting image");
-        setTreatmentParams({
-          caseType: isBurnAwaitingImage
-            ? finalAnswer
-                .replace(" (awaiting image for severity assessment)", "")
-                .trim()
-            : finalAnswer,
-          degree: predictData?.degree ?? undefined,
-          hasImageDiagnosis: false,
-          identifiedDegrees: [],
-        });
-      }
+
+      const isBurnAwaitingImage =
+        finalAnswer.toLowerCase().includes("burns") &&
+        finalAnswer.toLowerCase().includes("awaiting image");
+      setTreatmentParams({
+        caseType: isBurnAwaitingImage
+          ? finalAnswer
+              .replace(" (awaiting image for severity assessment)", "")
+              .trim()
+          : finalAnswer,
+        degree: predictData?.degree ?? undefined,
+        hasImageDiagnosis: false,
+        identifiedDegrees: [],
+        predictImageBase64: null,
+      });
+      // if (finalDecisionFlag) {
+      //   const isBurnAwaitingImage =
+      //     finalAnswer.toLowerCase().includes("burns") &&
+      //     finalAnswer.toLowerCase().includes("awaiting image");
+      //   setTreatmentParams({
+      //     caseType: isBurnAwaitingImage
+      //       ? finalAnswer
+      //           .replace(" (awaiting image for severity assessment)", "")
+      //           .trim()
+      //       : finalAnswer,
+      //     degree: predictData?.degree ?? undefined,
+      //     hasImageDiagnosis: false,
+      //     identifiedDegrees: [],
+      //     predictImageBase64: null,
+      //   });
+      // }
       if (
         finalAnswer &&
         finalAnswer.toLowerCase().includes("burns") &&
@@ -322,13 +382,16 @@ const ChatPage = () => {
     } catch (error) {
       setMessages((prev) => [
         ...prev,
-        { text: `Error contacting server: ${error.message}`, fromUser: false },
+        {
+          text: `Error contacting server: ${error.message}`,
+          fromUser: false,
+          isSpeakable: true,
+        },
       ]);
     } finally {
       setIsLoading(false);
     }
   };
-
 
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", padding: "2rem" }}>
@@ -338,9 +401,15 @@ const ChatPage = () => {
         inputMsg={inputMsg}
         setInputMsg={setInputMsg}
         onSend={sendRequest}
-        disabled={isLoading || isFinalDecision}
+        disabled={isLoading || isUserInputLocked}
       />
-      {!isFinalDecision && <VoiceRecorder onSendAudio={handleSendAudio} />}
+      {!isUserInputLocked && (
+        <VoiceRecorder
+          onSendAudio={handleSendAudio}
+          disabled={isUserInputLocked}
+        />
+      )}
+
       {ambulance_flag && isFinalDecision && !locationSent && (
         <LocationFetcher onLocation={handleLocation} />
       )}
@@ -351,10 +420,11 @@ const ChatPage = () => {
             setMessages((prev) => [
               ...prev,
               {
-                text: `Image uploaded successfully: ${imgURL}`,
+                text: `Image uploaded successfully:`,
                 fromUser: true,
                 isImage: true,
                 imageUrl: imgURL,
+                //isSpeakable: false,
               },
             ])
           }
