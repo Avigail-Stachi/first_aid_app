@@ -32,18 +32,30 @@ if ENVIRONMENT == "production":
     allow_methods = ["GET", "POST"]
     allow_headers = ["Authorization", "Content-Type"]
 else:
-    origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost",
+        "http://127.0.0.1",
+    ]
+
     allow_methods = ["*"]
     allow_headers = ["*"]
 
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=origins,
+#     allow_credentials=True,
+#     allow_methods=allow_methods,
+#     allow_headers=allow_headers,
+# )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # פתוח לכולם (רק לבדיקה!)
     allow_credentials=True,
-    allow_methods=allow_methods,
-    allow_headers=allow_headers,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-
 # ===== Load Model (Faster R-CNN) =====
 try:
     predict_with_faster.load_inference_model()
