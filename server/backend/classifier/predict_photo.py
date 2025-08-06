@@ -4,7 +4,7 @@ from tensorflow.keras.preprocessing import image
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, '..', 'model','photos', 'saved_model_photos.keras')
+MODEL_PATH = os.path.join(BASE_DIR, '..', 'model','photos', 'saved_model1_.keras')
 
 model_photo = load_model(MODEL_PATH)
 print("Model loaded successfully from", MODEL_PATH)

@@ -14,11 +14,11 @@ ENV= os.getenv("APP_ENV", "development")  # ברירת מחדל: פיתוח
 
 client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
-def send_emergency_sms(lat: float, lng: float, user_message: str, diagnosis: str) -> dict:
+def send_emergency_sms(lat: float, lng: float, message: str, diagnosis: str) -> dict:
     message_body = (
         f"Emergency alert received!\n"
         f"Location: https://maps.google.com/?q={lat},{lng}\n"
-        f"User message: {user_message}\n"
+        f"User message: {message}\n"
         f"App diagnosis: {diagnosis}"
     )
 
