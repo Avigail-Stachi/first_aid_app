@@ -2,8 +2,10 @@ import os
 import time
 import shutil
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request
+import traceback
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -25,37 +27,16 @@ for folder in [TEMP_UPLOAD_DIR, UPLOAD_DIR, PREDICTED_IMAGES_DIR]:
     os.makedirs(folder, exist_ok=True)
 
 # ===== CORS =====
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-
-if ENVIRONMENT == "production":
-    origins = ["https://myproductiondomain.com"]
-    allow_methods = ["GET", "POST"]
-    allow_headers = ["Authorization", "Content-Type"]
-else:
-    origins = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost",
-        "http://127.0.0.1",
-    ]
-
-    allow_methods = ["*"]
-    allow_headers = ["*"]
-
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=origins,
-#     allow_credentials=True,
-#     allow_methods=allow_methods,
-#     allow_headers=allow_headers,
-# )
+# הגדרת CORS פשוטה וישירה שמאפשרת גישה מכל מקור בסביבת פיתוח
+# כדי למנוע את השגיאה הקודמת.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # פתוח לכולם (רק לבדיקה!)
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 # ===== Load Model (Faster R-CNN) =====
 try:
     predict_with_faster.load_inference_model()
@@ -79,6 +60,16 @@ class Location(BaseModel):
     message: Optional[str] = "First-aid emergency reported."
 
 # ===== Routes =====
+
+@app.get("/test")
+async def test():
+    print("Test endpoint called!", flush=True)
+    return {"message": "Server is running!"}
+
+@app.get("/")
+async def root():
+    print("Root endpoint called!", flush=True)
+    return {"message": "FastAPI server is running!"}
 
 @app.post("/predict")
 async def predict(request_body: RequestBody):
@@ -152,7 +143,12 @@ async def receive_location(location: Location):
 async def send_sms(location: Location):
     print("Received /send_sms request", flush=True)
     print(f"Location data: {location}", flush=True)
+    print(f"Coords: lat={location.coords.lat}, lng={location.coords.lng}", flush=True)
+    print(f"Message: {location.message}", flush=True)
+    print(f"Prediction: {location.prediction}", flush=True)
+    
     try:
+        print("Calling sms_sender.send_emergency_sms...", flush=True)
         result = sms_sender.send_emergency_sms(
             lat=location.coords.lat,
             lng=location.coords.lng,
@@ -162,6 +158,8 @@ async def send_sms(location: Location):
         print(f"send_emergency_sms returned: {result}", flush=True)
     except Exception as e:
         print(f"Error in send_sms endpoint: {e}", flush=True)
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}", flush=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
     if result["status"] == "success":
@@ -267,4 +265,4 @@ async def get_treatment(
 # ===== Main =====
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

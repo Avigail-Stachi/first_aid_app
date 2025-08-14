@@ -9,20 +9,8 @@ function LocationFetcher({ onLocation }) {
   const [manualLng, setManualLng] = useState("");
   const [error, setError] = useState(null);
   const [confiemed, setConfiemed] = useState(false);
-  async function getAddressFromCoords(lat, lng) {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=en`;
-    try {
-      const res = await fetch(url, {
-        headers: {
-          "User-Agent": "EmergencyApp/1.0",
-        },
-      });
-      const data = await res.json();
-      return data.display_name || `${lat}, ${lng}`;
-    } catch (error) {
-      console.error("Reverse geocoding failed", error);
-      return `${lat}, ${lng}`;
-    }
+  function getAddressFromCoords(lat, lng) {
+    return `Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
   }
   useEffect(() => {
     if (calledRef.current) return; // אם כבר קרינו פעם אחת — לא עושים שוב
@@ -38,7 +26,7 @@ function LocationFetcher({ onLocation }) {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        const address = await getAddressFromCoords(latitude, longitude);
+        const address = getAddressFromCoords(latitude, longitude);
         const fullLocation = { lat: latitude, lng: longitude, address };
         setLocation(fullLocation);
       },
@@ -80,7 +68,7 @@ function LocationFetcher({ onLocation }) {
       setError("Please enter valid latitude and longitude.");
       return;
     }
-    const address = await getAddressFromCoords(lat, lng);
+    const address = getAddressFromCoords(lat, lng);
     const manualLocation = { lat, lng, address };
     setLocation(manualLocation);
     onLocation(manualLocation);
